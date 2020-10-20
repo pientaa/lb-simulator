@@ -17,12 +17,10 @@ def generator(num_of_shards, delta_t, size_of_vectors, mean, std):
     time_marks_in_delta_t = generate_time_stamps(int(size_of_vectors), float(delta_t), tasks_in_delta_t)
     
     requests = create_requests(int(size_of_vectors), tasks_in_delta_t, time_marks_in_delta_t, vectors)
-
-    requests_sorted = sorted(requests, key=lambda x: x[0])
     
-    add_indexes_to_requests(requests_sorted)
+    add_indexes_to_requests(requests)
 
-    save_requests(requests_sorted)
+    save_requests(requests)
 
 def create_vectors(num_of_shards, size_of_vectors, mean, std):
     vectors = []
@@ -73,19 +71,30 @@ def create_requests(size_of_vectors, tasks_in_delta_t, time_marks_in_delta_t, ve
                 task_iterator = task_iterator - 1
                 requests.append(tmp_req)
                 tmp_req = []
-    return requests
+    return sorted(requests, key=lambda x: x[0])
 
 def add_indexes_to_requests(requests_sorted):
     for request in requests_sorted:
         request.insert(0, requests_sorted.index(request) + 1)
 
-def save_requests(requests_sorted):
+def save_requests(requests):
     requests_file = open("./generator/requests.csv","w")
     requests_file.write("id, timestamp, shard, size \n")
-    for request in requests_sorted:
+    for request in requests:
         request_string = ','.join(map(str, request)) + "\n"
         requests_file.write(request_string)
     requests_file.close()
+
+
+
+
+
+
+
+
+
+
+
 
 
 if __name__== "__main__":
