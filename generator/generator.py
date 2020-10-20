@@ -14,7 +14,7 @@ def generator(num_of_shards, delta_t, size_of_vectors, mean, std):
             
     tasks_in_delta_t = count_positive_tasks(int(size_of_vectors), vectors)
 
-    time_marks_in_delta_t = generate_time_stamps(int(size_of_vectors), int(delta_t), tasks_in_delta_t)
+    time_marks_in_delta_t = generate_time_stamps(int(size_of_vectors), float(delta_t), tasks_in_delta_t)
     
     requests = create_requests(int(size_of_vectors), tasks_in_delta_t, time_marks_in_delta_t, vectors)
 
@@ -89,4 +89,4 @@ def save_requests(requests_sorted):
 
 
 if __name__== "__main__":
-    generator(int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5]))
+    generator(int(sys.argv[1]), float(sys.argv[2]), int(sys.argv[3]), float(sys.argv[4]), float(sys.argv[5]))
