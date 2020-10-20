@@ -62,5 +62,6 @@ def generator(shards, deltaT, N, mean, std):
         requests_file.write(request_string)
     requests_file.close()
 
+
 if __name__== "__main__":
     generator(int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5]))
