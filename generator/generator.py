@@ -2,24 +2,21 @@
 import sys
 import csv
 import random
-print("Hello")
 
 def generator(shards, deltaT, N, mean, std):
-    print("Hello")
-    tmp_List = []
+    tmp_list = []
     vectors = []
 
-    for x in range(1, shards+1):
-        tmp_List.append(x)
-        for y in range(1, N):
-            tmp_List.append(random.randint(0, 10))
-        vectors.append(tmp_List)
-        tmp_List = []
+    for x in range(shards):
+        for y in range(N):
+            tmp_list.append(random.randint(0, 10))
+        vectors.append(tmp_list)
+        tmp_list = []
 
 
-    vectors_file = open("vectors.csv","w")
+    vectors_file = open("./generator/vectors.csv","w")
     for x in vectors:
-        vector_string = ','.join(map(str, x)) + "\n"
+        vector_string = str(vectors.index(x)+1) +","+ ','.join(map(str, x)) + "\n"
         vectors_file.write(vector_string)
 
 
