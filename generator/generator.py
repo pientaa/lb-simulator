@@ -2,21 +2,21 @@ import numpy as np
 import sys
 import random
 
-def generator(num_of_shards, delta_t, size_of_vectors, mean, std):
+def generator(num_of_shards, period, size_of_vectors, mean, std):
     vectors = []
-    tasks_in_delta_t = []
-    time_marks_in_delta_t = []
+    tasks_in_period = []
+    time_marks_in_period = []
     requests = []
 
     vectors = create_vectors(int(num_of_shards), int(size_of_vectors), float(mean), float(std))
 
     save_vectors(vectors)
             
-    tasks_in_delta_t = count_positive_tasks(int(size_of_vectors), vectors)
+    tasks_in_period = count_positive_tasks(int(size_of_vectors), vectors)
 
-    time_marks_in_delta_t = generate_time_stamps(int(size_of_vectors), float(delta_t), tasks_in_delta_t)
+    time_marks_in_period = generate_time_stamps(int(size_of_vectors), float(period), tasks_in_period)
     
-    requests = create_requests(int(size_of_vectors), tasks_in_delta_t, time_marks_in_delta_t, vectors)
+    requests = create_requests(int(size_of_vectors), tasks_in_period, time_marks_in_period, vectors)
     
     add_indexes_to_requests(requests)
 
@@ -39,38 +39,36 @@ def save_vectors(vectors):
     vectors_file.close()
 
 def count_positive_tasks(size_of_vectors, vectors):
-    tasks_in_delta_t = []
+    positive_tasks = []
     for column in range(size_of_vectors):
         num_of_positive_loads = 0
         for vector in vectors:
             if(vector[column]>0):
                 num_of_positive_loads = num_of_positive_loads + 1
-        tasks_in_delta_t.append(num_of_positive_loads)
-    return tasks_in_delta_t
+        positive_tasks.append(num_of_positive_loads)
+    return positive_tasks
 
-def generate_time_stamps(size_of_vectors, delta_t, tasks_in_delta_t):
-    time_marks_in_delta_t = []
+def generate_time_stamps(size_of_vectors, period, tasks_in_period):
+    time_marks_in_period = []
     for size_of_vector in range(size_of_vectors):
-        delta_t_start = size_of_vector * delta_t
-        delta_t_end = (size_of_vector + 1) * delta_t
-        time_marks = np.random.uniform(delta_t_start, delta_t_end, tasks_in_delta_t[size_of_vector])
+        period_start = size_of_vector * period
+        period_end = (size_of_vector + 1) * period
+        time_marks = np.random.uniform(period_start, period_end, tasks_in_period[size_of_vector])
         time_marks = [round(time_mark, 2) for time_mark in time_marks]
-        time_marks_in_delta_t.append(time_marks)
-    return time_marks_in_delta_t
+        time_marks_in_period.append(time_marks)
+    return time_marks_in_period
 
-def create_requests(size_of_vectors, tasks_in_delta_t, time_marks_in_delta_t, vectors):
+def create_requests(size_of_vectors, tasks_in_period, time_marks_in_period, vectors):
     requests = []
     for size_of_vector in range(size_of_vectors):
-        task_iterator = tasks_in_delta_t[size_of_vector] - 1
         for vector in vectors:
             if(vector[size_of_vector]>0):
-                tmp_req = []
-                tmp_req.append(time_marks_in_delta_t[size_of_vector][task_iterator])
-                tmp_req.append(vectors.index(vector)+1)
-                tmp_req.append(vector[size_of_vector])
-                task_iterator = task_iterator - 1
-                requests.append(tmp_req)
-                tmp_req = []
+                request = []
+                request.append(time_marks_in_period[size_of_vector][vectors.index(vector)])
+                request.append(vectors.index(vector)+1)
+                request.append(vector[size_of_vector])
+                requests.append(request)
+                request = []
     return sorted(requests, key=lambda x: x[0])
 
 def add_indexes_to_requests(requests_sorted):
