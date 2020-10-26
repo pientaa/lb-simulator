@@ -1,4 +1,5 @@
 import numpy as np
+import pandas
 import sys
 import random
 
@@ -9,15 +10,15 @@ def generator(num_of_shards, num_of_samples, period, mean, std):
 
     vectors = create_vectors(int(num_of_shards), int(num_of_samples), float(mean), float(std))
 
-    save_vectors(vectors)
-
     time_marks_in_period = generate_time_stamps(int(num_of_samples), float(period))
     
-    requests = create_requests(int(num_of_samples), time_marks_in_period, vectors)
+    requests = create_requests(time_marks_in_period, vectors)
     
     add_indexes_to_requests(requests)
 
     save_requests(requests)
+
+    generate_load_vectors(requests, period, num_of_shards)
 
 def create_vectors(num_of_shards, num_of_samples, mean, std):
     vectors = []
@@ -32,13 +33,6 @@ def non_negative_random_normal(mean, std, num_of_samples):
     loads = np.random.normal(mean, std, num_of_samples).tolist()
     return(loads if all(load >=0 for load in loads) else non_negative_random_normal(mean, std, num_of_samples))
 
-def save_vectors(vectors):
-    vectors_file = open("./generator/vectors.csv","w")
-    for vector in vectors:
-       vector_string = ','.join(map(str, vector)) + "\n"
-       vectors_file.write(vector_string)
-    vectors_file.close()
-
 def generate_time_stamps(num_of_samples, period):
     time_marks_in_period = []
     for index in range(num_of_samples):
@@ -49,7 +43,7 @@ def generate_time_stamps(num_of_samples, period):
         time_marks_in_period.append(time_marks)
     return time_marks_in_period
 
-def create_requests(num_of_samples, time_marks_in_period, vectors):
+def create_requests(time_marks_in_period, vectors):
     requests = []
     request = []
     for vector in vectors:
@@ -79,5 +73,27 @@ def save_requests(requests):
         requests_file.write(request_string)
     requests_file.close()
 
+def generate_load_vectors(requests, period, num_of_shards):
+    load_vector = [0] * num_of_shards
+    
+    requests_df = pandas.DataFrame(requests, columns=['id', 'timestamp', 'shard', 'load'])
+    
+    grouped_requests_df = requests_df.groupby('shard').aggregate(sum_load_per_period)
+    #df.groupby('order', axis='columns')
+    print(grouped_requests_df)
+
+
+        # for load in load_vector:
+        #     requests.
+
+def sum_load_per_period(df):
+    global period
+
+    print(df)
+
+    return sum(df)
+
+
 if __name__== "__main__":
+    period = float(sys.argv[3])
     generator(int(sys.argv[1]), int(sys.argv[2]), float(sys.argv[3]), float(sys.argv[4]), float(sys.argv[5]))
