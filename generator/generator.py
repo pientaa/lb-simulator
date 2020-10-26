@@ -48,6 +48,7 @@ def create_requests(time_marks_in_period, vectors):
     request = []
     for vector in vectors:
         for load in vector:
+            # TODO: ELIMINATE .index
             shard_id = vectors.index(vector) + 1
             load_index = vector.index(load)
             timestamp = time_marks_in_period[load_index][shard_id - 1]
@@ -74,24 +75,23 @@ def save_requests(requests):
     requests_file.close()
 
 def generate_load_vectors(requests, period, num_of_shards):
-    load_vector = [0] * num_of_shards
     
     requests_df = pandas.DataFrame(requests, columns=['id', 'timestamp', 'shard', 'load'])
-    
-    grouped_requests_df = requests_df.groupby('shard').aggregate(sum_load_per_period)
-    #df.groupby('order', axis='columns')
-    print(grouped_requests_df)
 
+    for (shard, group) in requests_df.groupby('shard'):
+        load_vector = [0] * num_of_shards
 
-        # for load in load_vector:
-        #     requests.
+        i = 0
+        for load in load_vector:
+            current_request = group[(group['timestamp'] >= period * i) & (group['timestamp'] < period * (i + 1))]
 
-def sum_load_per_period(df):
-    global period
+            start_time = float(current_request['timestamp'])
+            end_time = round(start_time + float(current_request['load']), 3)
+            
+            # TODO: Find all loads that need to be incremented by apppropriate load value
+            # TODO: Increment load values
 
-    print(df)
-
-    return sum(df)
+            i = i + 1
 
 
 if __name__== "__main__":
