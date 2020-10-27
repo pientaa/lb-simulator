@@ -109,35 +109,37 @@ def generate_load_vectors(requests, period, num_of_shards):
                   current_request['load'].to_string(index=False))
             # Zadanie czerwone
             if(request_finish_period_index - i < 1):
+                print("Zadanie czerwone")
                 load_vector[i] = load_vector[i] + \
                     float(current_request['load'] / period)
                 # print("Load: ", current_request['load'].to_string(index = False)," | ", start_time, "-", end_time)
-                break
+            else:
 
-            for index in range(i, int(math.floor(request_finish_period_index)) + 1):
-                print("Index:", index)
-                # if(index == 5):
-                #     break
-                # Zadanie żółte
-                if(index == i):
-                    load_vector[index] = load_vector[index] + \
-                        (((index + 1) * period - start_time) / period)
-                    print("Zadanie żółte")
+                for index in range(i, int(math.floor(request_finish_period_index)) + 1):
+                    print("Index:", index)
+                    if(index == int(math.floor(request_finish_period_index))):
+                        break
+                    # Zadanie żółte
+                    if(index == i):
+                        load_vector[index] = load_vector[index] + \
+                            (((index + 1) * period - start_time) / period)
+                        print("Zadanie żółte")
 
-                # Zadanie zielone
-                elif (index == int(math.floor(request_finish_period_index))):
-                    if(index >= len(load_vector)):
-                        load_vector.append(0)
-                    load_vector[index] = load_vector[index] + \
-                        ((end_time - period * index) / period)
-                    print("Zadanie zielone")
+                    # Zadanie zielone
+                    elif (index == int(math.floor(request_finish_period_index))):
+                        if(index >= len(load_vector)):
+                            load_vector.append(0)
+                        load_vector[index] = load_vector[index] + \
+                            ((end_time - period * index) / period)
+                        print("Zadanie zielone")
 
-                # Zadanie niebieskie
-                else:
-                    load_vector[index] = load_vector[index] + 1
-                    print("Zadanie niebieskie")
+                    # Zadanie niebieskie
+                    else:
+                        load_vector[index] = load_vector[index] + 1
+                        print("Zadanie niebieskie")
 
-            print("Load vector: ", [round(load, 2) for load in load_vector])
+                print("Load vector: ", [round(load, 2)
+                                        for load in load_vector])
 
             # TODO: Increment load values
 
