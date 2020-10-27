@@ -3,6 +3,7 @@ import pandas
 import sys
 import random
 import math
+import os
 
 
 def generator(num_of_shards, num_of_samples, period, mean, std):
@@ -47,7 +48,7 @@ def generate_time_stamps(num_of_samples, period):
         period_end = (index + 1) * period
         time_marks = np.random.uniform(
             period_start, period_end, num_of_samples)
-        time_marks = [round(time_mark, 2) for time_mark in time_marks]
+        time_marks = [round(time_mark, 3) for time_mark in time_marks]
         time_marks_in_period.append(time_marks)
     return time_marks_in_period
 
@@ -105,20 +106,19 @@ def generate_load_vectors(requests, period, num_of_shards):
 
             # TODO: Find all loads that need to be incremented by apppropriate load value
             request_finish_period_index = end_time / period
-            print(start_time, " - ", end_time, " | Load: ",
-                  current_request['load'].to_string(index=False))
+            print(start_time, " - ", end_time, " | Load: ", current_request['load'].to_string(index=False))
             # Zadanie czerwone
+            request_finish_period_index = int(math.floor(request_finish_period_index))
             if(request_finish_period_index - i < 1):
                 print("Zadanie czerwone")
                 load_vector[i] = load_vector[i] + \
                     float(current_request['load'] / period)
-                # print("Load: ", current_request['load'].to_string(index = False)," | ", start_time, "-", end_time)
+                print("Load: ", current_request['load'].to_string(index = False)," | ", start_time, "-", end_time)
             else:
-
-                for index in range(i, int(math.floor(request_finish_period_index)) + 1):
+                for index in range(i, request_finish_period_index + 1):
                     print("Index:", index)
-                    if(index == int(math.floor(request_finish_period_index))):
-                        break
+                    if(index >= len(load_vector)):
+                       break
                     # Zadanie żółte
                     if(index == i):
                         load_vector[index] = load_vector[index] + \
@@ -127,8 +127,6 @@ def generate_load_vectors(requests, period, num_of_shards):
 
                     # Zadanie zielone
                     elif (index == int(math.floor(request_finish_period_index))):
-                        if(index >= len(load_vector)):
-                            load_vector.append(0)
                         load_vector[index] = load_vector[index] + \
                             ((end_time - period * index) / period)
                         print("Zadanie zielone")
@@ -138,18 +136,33 @@ def generate_load_vectors(requests, period, num_of_shards):
                         load_vector[index] = load_vector[index] + 1
                         print("Zadanie niebieskie")
 
-                print("Load vector: ", [round(load, 2)
-                                        for load in load_vector])
-
-            # TODO: Increment load values
+                    
+                print("Load vector: ", [round(load, 2) for load in load_vector])
 
             i = i + 1
         print("Shard:", shard)
         print([round(load, 2) for load in load_vector])
+        load_vector = [round(load, 2) for load in load_vector]
+        save_load_vectors(shard, load_vector)
 
+def save_load_vectors(shard, load_vector):
+    load_vector_file = open("./generator/load_vectors.csv", "a")
+    load_vector_string = str(shard) +',' + ','.join(map(str, load_vector)) + "\n"
+    load_vector_file.write(load_vector_string)
+    load_vector_file.close()
+
+def clear_directory():
+    path = os.getcwd()
+    try:
+        os.remove("generator/requests.csv")
+        os.remove("generator/load_vectors.csv")
+    except OSError as e:
+        print("Error: %s : %s" % (path, e.strerror))
 
 if __name__ == "__main__":
     period = float(sys.argv[3])
     num_of_samples = int(sys.argv[2])
-    generator(int(sys.argv[1]), int(sys.argv[2]), float(
-        sys.argv[3]), float(sys.argv[4]), float(sys.argv[5]))
+
+    clear_directory()
+
+    generator(int(sys.argv[1]), int(sys.argv[2]), float(sys.argv[3]), float(sys.argv[4]), float(sys.argv[5]))
