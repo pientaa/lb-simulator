@@ -51,10 +51,9 @@ def create_requests(time_marks_in_period, vectors):
     requests = []
     request = []
     for vector in vectors:
-        for load in vector:
-            # TODO: ELIMINATE .index
+        for load_index in range(len(vector)):
+            load = vector[load_index]
             shard_id = vectors.index(vector) + 1
-            load_index = vector.index(load)
             timestamp = time_marks_in_period[load_index][shard_id - 1]
 
             request.append(timestamp)
@@ -79,72 +78,71 @@ def save_requests(requests):
     requests_file.close()
 
 def generate_load_vectors(requests, period, num_of_shards):
-
     requests_df = pandas.DataFrame(requests, columns=['id', 'timestamp', 'shard', 'load'])
+    load_vectors = []
+    max_vector_size = 0
 
     for (shard, group) in requests_df.groupby('shard'):
         load_vector = [0] * num_of_samples
 
-        print("***********************")
-        for i in range(len(load_vector)):
-            
+        for current_period_index in range(len(load_vector)):
             # we assume only one requests in a particular period per shard
-            current_request = group[(group['timestamp'] >= period * i) & (group['timestamp'] < period * (i + 1))]
+            current_request = group[(group['timestamp'] >= period * current_period_index) & (group['timestamp'] < period * (current_period_index + 1))]
 
-            start_time = float(current_request['timestamp'])
-            end_time = round(start_time + float(current_request['load']), 3)
-            last_period_index = int(math.floor(end_time / period)) # we assume that 0.0 is an absolute beginning of an experiment
-            current_period_index = i
-            current_load = float(current_request['load']) / float(period)
+            load_vector = calculate_load_vector(current_request, current_period_index, load_vector)
 
-            num_of_full_periods = last_period_index - current_period_index - 1
+        if (max_vector_size < len(load_vector)):
+            max_vector_size = len(load_vector)
 
-            print(start_time, " - ", end_time, " | Load: ", current_request['load'].to_string(index=False))
+        load_vectors.append(load_vector)
 
-            if (num_of_full_periods == -1):
-                load_vector[current_period_index] = load_vector[current_period_index] + current_load
+    for vector in load_vectors:
+        while (len(vector) < max_vector_size):
+            vector.append(0.0)
+        
+        save_load_vector(shard, vector)
 
-            if (num_of_full_periods == 0):
-                first_period_load = (((current_period_index + 1) * period - start_time) / float(period))
-                second_period_load = current_load - first_period_load
+def calculate_load_vector(current_request, current_period_index, load_vector):
+    start_time = float(current_request['timestamp'])
+    end_time = round(start_time + float(current_request['load']), 3)
+    last_period_index = int(math.floor(end_time / period))
+    current_load = float(current_request['load']) / float(period)
 
-                load_vector[current_period_index] = load_vector[current_period_index] + first_period_load
+    num_of_full_periods = last_period_index - current_period_index - 1
 
-                if (len(load_vector) > current_period_index + 1):
-                    load_vector[current_period_index + 1] = load_vector[current_period_index + 1] + second_period_load
-                else:
-                    load_vector.append(second_period_load)
+    if (num_of_full_periods == -1):
+        load_vector[current_period_index] = load_vector[current_period_index] + current_load
 
-            if (num_of_full_periods > 0):
-                first_period_load = (((current_period_index + 1) * period - start_time) / float(period)) 
-                last_period_load = current_load - first_period_load - num_of_full_periods
+    if (num_of_full_periods == 0):
+        first_period_load = (((current_period_index + 1) * period - start_time) / float(period))
+        second_period_load = current_load - first_period_load
 
-                last_period_index = current_period_index + num_of_full_periods + 2
+        load_vector[current_period_index] = load_vector[current_period_index] + first_period_load
 
-                load_vector[current_period_index] = load_vector[current_period_index] + first_period_load
+        if (len(load_vector) > current_period_index + 1):
+            load_vector[current_period_index + 1] = load_vector[current_period_index + 1] + second_period_load
+        else:
+            load_vector.append(second_period_load)
 
-                if (len(load_vector) > last_period_index):                
-                    load_vector[last_period_index] = load_vector[last_period_index] + last_period_load
-                else:
-                    load_vector.append(last_period_load)
+    if (num_of_full_periods > 0):
+        first_period_load = (((current_period_index + 1) * period - start_time) / float(period)) 
+        last_period_load = current_load - first_period_load - num_of_full_periods
 
-                for j in range(num_of_full_periods):
-                    load_vector[current_period_index + j + 1] = load_vector[current_period_index + j + 1] + 1
+        last_period_index = current_period_index + num_of_full_periods + 2
 
-                print("Load vector: ", [round(load, 2) for load in load_vector])
+        load_vector[current_period_index] = load_vector[current_period_index] + first_period_load
 
+        if (len(load_vector) > last_period_index):                
+            load_vector[last_period_index] = load_vector[last_period_index] + last_period_load
+        else:
+            load_vector.append(last_period_load)
 
-        print("Shard:", shard)
-        print([round(load, 2) for load in load_vector])
-        load_vector = [round(load, 2) for load in load_vector]
-        save_load_vectors(shard, load_vector)
+        for j in range(num_of_full_periods):
+            load_vector[current_period_index + j + 1] = load_vector[current_period_index + j + 1] + 1
+            
+    return [round(load, 3) for load in load_vector]
 
-def increment_full_periods(load_vector, num_of_full_periods, current_period_index):
-    for j in range(num_of_full_periods):
-        load_vector[current_period_index + j] = load_vector[current_period_index + j] + 1 / period
-        print("Zadanie niebieskie")
-
-def save_load_vectors(shard, load_vector):
+def save_load_vector(shard, load_vector):
     load_vector_file = open("./generator/load_vectors.csv", "a")
     load_vector_string = ','.join(map(str, load_vector)) + "\n"
     load_vector_file.write(load_vector_string)
