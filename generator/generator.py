@@ -28,7 +28,7 @@ def generator(num_of_shards, num_of_samples, period, shape, scale):
     plt.plot(bins, y, linewidth=2, color='r')  
     plt.show()
 
-    requests.to_csv('requests.csv') 
+    requests.to_csv('./generator/requests.csv') 
 
     generate_load_vectors(requests, period, num_of_shards)
 
@@ -50,14 +50,6 @@ def normalize(v):
 
 def flatten(listOfLists):
     return list(chain.from_iterable(listOfLists))
-
-def save_requests(requests):
-    requests_file = open("./generator/requests.csv", "w")
-    requests_file.write("id, timestamp, shard, load \n")
-    for request in requests:
-        request_string = ','.join(map(str, request)) + "\n"
-        requests_file.write(request_string)
-    requests_file.close()
 
 def generate_load_vectors(requests, period, num_of_shards):
     load_vectors = []
