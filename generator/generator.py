@@ -4,70 +4,52 @@ import sys
 import random
 import math
 import os
+import matplotlib.pyplot as plt
+import scipy.special as sps  
+from itertools import chain
 
 
-def generator(num_of_shards, num_of_samples, period, mean, std):
-    vectors = []
-    time_marks_in_period = []
-    requests = []
+def generator(num_of_shards, num_of_samples, period, shape, scale):
 
-    vectors = create_vectors(int(num_of_shards), int(num_of_samples), float(mean), float(std))
+    tasks = [int(round(number, 0)) for number in np.random.gamma(shape, scale, num_of_samples)]
 
-    time_marks_in_period = generate_time_stamps(int(num_of_samples), float(period))
+    timestamps = [round(number, 3) for number in generate_time_stamps(tasks, period)]
 
-    requests = create_requests(time_marks_in_period, vectors)
+    loads = [round(number, 3) for number in np.random.gamma(shape, scale, len(timestamps))]
 
-    add_indexes_to_requests(requests)
+    shards = np.random.randint(1, num_of_shards + 1, len(timestamps))
 
-    save_requests(requests)
+    requests = pandas.DataFrame(list(zip(timestamps, shards, loads)), columns=['timestamp', 'shard', 'load'])
+
+# Plot density
+    count, bins, ignored = plt.hist(tasks, 25, density=True)
+    y = bins**(shape-1)*(np.exp(-bins/scale) /  
+                     (sps.gamma(shape)*scale**shape))
+    plt.plot(bins, y, linewidth=2, color='r')  
+    plt.show()
+
+    requests.to_csv('requests.csv') 
 
     generate_load_vectors(requests, period, num_of_shards)
 
-def create_vectors(num_of_shards, num_of_samples, mean, std):
-    vectors = []
-    for shard in range(num_of_shards):
-        loads = []
-        loads = non_negative_random_normal(mean, std, num_of_samples)
-        loads = [round(load, 3) for load in loads]
-        vectors.append(loads)
-    return vectors
+def generate_time_stamps(tasks, period):
+    timestamps = []
+    for i in range(len(tasks)):
+        random_t = np.random.gamma(1.0, 1.0, tasks[i])
+        scaled_t = [round(float(number), 3) * period + float(period) * (i + 1) for number in normalize(random_t)]
+        sorted_t = sorted(scaled_t, key=float)
+        timestamps.append(sorted_t)
+    
+    return flatten(timestamps)
 
-def non_negative_random_normal(mean, std, num_of_samples):
-    loads = np.random.normal(mean, std, num_of_samples).tolist()
-    return(loads if all(load >= 0 for load in loads) else non_negative_random_normal(mean, std, num_of_samples))
+def normalize(v):
+    norm = np.linalg.norm(v)
+    if norm == 0: 
+       return v
+    return v / norm
 
-def generate_time_stamps(num_of_samples, period):
-    time_marks_in_period = []
-    for index in range(num_of_samples):
-        period_start = index * period
-        period_end = (index + 1) * period
-        time_marks = np.random.uniform(
-            period_start, period_end, num_of_samples)
-        time_marks = [round(time_mark, 3) for time_mark in time_marks]
-        time_marks_in_period.append(time_marks)
-    return time_marks_in_period
-
-def create_requests(time_marks_in_period, vectors):
-    requests = []
-    request = []
-    for vector in vectors:
-        for load_index in range(len(vector)):
-            load = vector[load_index]
-            shard_id = vectors.index(vector) + 1
-            timestamp = time_marks_in_period[load_index][shard_id - 1]
-
-            request.append(timestamp)
-            request.append(shard_id)
-            request.append(load)
-
-            requests.append(request)
-            request = []
-
-    return sorted(requests, key=lambda x: x[0])
-
-def add_indexes_to_requests(sorted_requests):
-    for request in sorted_requests:
-        request.insert(0, sorted_requests.index(request) + 1)
+def flatten(listOfLists):
+    return list(chain.from_iterable(listOfLists))
 
 def save_requests(requests):
     requests_file = open("./generator/requests.csv", "w")
@@ -78,18 +60,18 @@ def save_requests(requests):
     requests_file.close()
 
 def generate_load_vectors(requests, period, num_of_shards):
-    requests_df = pandas.DataFrame(requests, columns=['id', 'timestamp', 'shard', 'load'])
     load_vectors = []
     max_vector_size = 0
 
-    for (shard, group) in requests_df.groupby('shard'):
-        load_vector = [0] * num_of_samples
+    for (shard, group) in requests.groupby('shard'):
+        load_vector = [0.0] * num_of_samples
 
         for current_period_index in range(len(load_vector)):
-            # we assume only one requests in a particular period per shard
-            current_request = group[(group['timestamp'] >= period * current_period_index) & (group['timestamp'] < period * (current_period_index + 1))]
+            current_requests = group[(group['timestamp'] >= period * current_period_index) & (group['timestamp'] < period * (current_period_index + 1))]
 
-            load_vector = calculate_load_vector(current_request, current_period_index, load_vector)
+            if(not current_requests.empty):
+                for index, current_request in current_requests.iterrows():
+                    load_vector = calculate_load_vector(current_request, current_period_index, load_vector)
 
         if (max_vector_size < len(load_vector)):
             max_vector_size = len(load_vector)
@@ -149,12 +131,12 @@ def save_load_vector(shard, load_vector):
     load_vector_file.close()
 
 def clear_directory():
-    path = os.getcwd()
     try:
         os.remove("generator/requests.csv")
         os.remove("generator/load_vectors.csv")
-    except OSError as e:
-        print("Error: %s : %s" % (path, e.strerror))
+    except OSError:
+        os.system("rm -f ./generator/load_vectors.csv")
+        os.system("rm -f ./generator/requests.csv")
 
 if __name__ == "__main__":
     period = float(sys.argv[3])
