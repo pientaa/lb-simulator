@@ -1,5 +1,5 @@
 import numpy as np
-import pandas
+import pandas as pd
 import sys
 import random
 import math
@@ -19,7 +19,7 @@ def generator(num_of_shards, num_of_samples, period, shape, scale):
 
     shards = np.random.randint(1, num_of_shards + 1, len(timestamps))
 
-    requests = pandas.DataFrame(list(zip(timestamps, shards, loads)), columns=['timestamp', 'shard', 'load'])
+    requests = pd.DataFrame(list(zip(timestamps, shards, loads)), columns=['timestamp', 'shard', 'load'])
 
 # Plot density
     # count, bins, ignored = plt.hist(tasks, 25, density=True)
