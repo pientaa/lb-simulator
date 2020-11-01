@@ -28,6 +28,7 @@ def generator(num_of_shards, num_of_samples, period, shape, scale):
     # plt.plot(bins, y, linewidth=2, color='r')  
     # plt.show()
 
+
     requests.to_csv('./generator/requests.csv') 
 
     generate_load_vectors(requests, period, num_of_shards)
