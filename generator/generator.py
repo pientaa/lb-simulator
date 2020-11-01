@@ -22,11 +22,11 @@ def generator(num_of_shards, num_of_samples, period, shape, scale):
     requests = pandas.DataFrame(list(zip(timestamps, shards, loads)), columns=['timestamp', 'shard', 'load'])
 
 # Plot density
-    count, bins, ignored = plt.hist(tasks, 25, density=True)
-    y = bins**(shape-1)*(np.exp(-bins/scale) /  
-                     (sps.gamma(shape)*scale**shape))
-    plt.plot(bins, y, linewidth=2, color='r')  
-    plt.show()
+    # count, bins, ignored = plt.hist(tasks, 25, density=True)
+    # y = bins**(shape-1)*(np.exp(-bins/scale) /  
+    #                  (sps.gamma(shape)*scale**shape))
+    # plt.plot(bins, y, linewidth=2, color='r')  
+    # plt.show()
 
     requests.to_csv('./generator/requests.csv') 
 
@@ -36,7 +36,7 @@ def generate_time_stamps(tasks, period):
     timestamps = []
     for i in range(len(tasks)):
         random_t = np.random.gamma(1.0, 1.0, tasks[i])
-        scaled_t = [round(float(number), 3) * period + float(period) * (i + 1) for number in normalize(random_t)]
+        scaled_t = [round(float(number), 3) * period + float(period) * i for number in normalize(random_t)]
         sorted_t = sorted(scaled_t, key=float)
         timestamps.append(sorted_t)
     
