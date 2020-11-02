@@ -2,23 +2,26 @@ import numpy as np
 import pandas as pd
 import sys
 import numpy as np
+import math
+
 
 def shard_allocator():
 
     if (not algorithm in ["random", "sequential", "SALP"]):
         sys.exit("Pass one of allocation algorithms: random/sequential/SALP as third param.")
 
-    if (num_of_shards  < 100 * num_of_nodes):
+    if (num_of_shards < 100 * num_of_nodes):
         sys.exit("There should be at least 100 times more shards than nodes.")
 
     if (algorithm == "random"):
         random_allocation()
 
     if (algorithm == "sequential"):
-        sequential_allocation()    
+        sequential_allocation()
 
     if (algorithm == "SALP"):
-        SALP_allocation()    
+        SALP_allocation()
+
 
 def random_allocation():
     shards_on_nodes = []
@@ -37,6 +40,7 @@ def random_allocation():
     shards_on_nodes_df = pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
     shards_on_nodes_df.sort_values('shard').to_csv("./simulator/shard_allocated.csv", index=False)
 
+
 def sequential_allocation():
     shards_on_nodes = []
     current_node = 1
@@ -51,9 +55,35 @@ def sequential_allocation():
     shards_on_nodes_df = pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
     shards_on_nodes_df.to_csv("./simulator/shard_allocated.csv", index=False)
 
+
 def SALP_allocation():
-    # TODO:
-    print("NOT IMPLEMENTED YET")
+
+    load_vectors_df = pd.read_csv("./generator/load_vectors.csv", header=None)
+
+    WTS = load_vectors_df.sum(axis=0)
+
+    periods_in_vector = load_vectors_df.shape[1]
+
+    NWTS = 1 / (num_of_shards * WTS)
+
+    modules_list = []
+
+    current_shard = 0
+
+    for index, row in load_vectors_df.iterrows():
+        current_shard = current_shard + 1
+        modules_list.append([calculate_vector_module(row, periods_in_vector), current_shard])
+
+
+    modules_sorted_df = pd.DataFrame(modules_list, columns=["module", "shard"]).sort_values('module')
+
+
+def calculate_vector_module(row, periods_in_vector):
+    sum = 0
+    for current_value in range(periods_in_vector):
+        sum = sum + row[current_value] ** 2
+    return math.sqrt(sum)
+
 
 if __name__ == "__main__":
     num_of_shards = int(sys.argv[1])
