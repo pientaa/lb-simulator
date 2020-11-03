@@ -71,9 +71,6 @@ def generate_load_vectors(requests, period, num_of_shards):
 
         for current_period_index in range(len(load_vector)):
             current_requests = group[(group['timestamp'] >= period * current_period_index) & (group['timestamp'] < period * (current_period_index + 1))]
-            # print("************")
-            # print(current_period_index)
-            # print(current_requests)
 
             if(not current_requests.empty):
                 for index, current_request in current_requests.iterrows():
@@ -99,11 +96,6 @@ def calculate_load_vector(current_request, current_load_index, load_vector):
     num_of_periods = 1 + last_period_index - first_period_index
 
     current_load = round(float(current_request['load']), 3)
-    
-    # print("******calculate_load_vector******")
-    # print("Current load: " + str(current_load))
-
-    # print("Periods: " + str(num_of_periods))
 
     if (num_of_periods == 1):
         load_vector[first_period_index] = load_vector[first_period_index] + normalize(current_load)
