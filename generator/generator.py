@@ -13,23 +13,33 @@ def generator(num_of_shards, num_of_samples, period, shape, scale):
 
     tasks = [int(round(number, 0)) for number in np.random.gamma(shape, scale, num_of_samples)]
 
+    # print(tasks)
+
     timestamps = [round(number, 3) for number in generate_time_stamps(tasks, period)]
 
-    loads = [round(number, 3) for number in np.random.gamma(shape, scale, len(timestamps))]
+# We can parametrize this distribution in the future, too
+    loads = [round(number, 3) for number in np.random.gamma(2.0, 2.0, len(timestamps))]
 
     shards = np.random.randint(1, num_of_shards + 1, len(timestamps))
 
     requests = pd.DataFrame(list(zip(timestamps, shards, loads)), columns=['timestamp', 'shard', 'load'])
 
-# Plot density
-    # count, bins, ignored = plt.hist(tasks, 25, density=True)
-    # y = bins**(shape-1)*(np.exp(-bins/scale) /  
-    #                  (sps.gamma(shape)*scale**shape))
-    # plt.plot(bins, y, linewidth=2, color='r')  
-    # plt.show()
+# Test if correct number of requests generated
+    sum = 0
 
+    for task in tasks:
+        sum += task
+
+    assert len(requests) == sum
 
     requests.to_csv('./generator/requests.csv') 
+
+# Plot density
+    count, bins, ignored = plt.hist(tasks, 25, density=True)
+    y = bins**(shape-1)*(np.exp(-bins/scale) /  
+                     (sps.gamma(shape)*scale**shape))
+    plt.plot(bins, y, linewidth=2, color='r')  
+    plt.show()
 
     generate_load_vectors(requests, period, num_of_shards)
 
@@ -37,13 +47,13 @@ def generate_time_stamps(tasks, period):
     timestamps = []
     for i in range(len(tasks)):
         random_t = np.random.gamma(1.0, 1.0, tasks[i])
-        scaled_t = [round(float(number), 3) * period + float(period) * i for number in normalize(random_t)]
+        scaled_t = [round(float(number), 3) * period + float(period) * i for number in normalize_vector(random_t)]
         sorted_t = sorted(scaled_t, key=float)
         timestamps.append(sorted_t)
     
     return flatten(timestamps)
 
-def normalize(v):
+def normalize_vector(v):
     norm = np.linalg.norm(v)
     if norm == 0: 
        return v
@@ -57,10 +67,13 @@ def generate_load_vectors(requests, period, num_of_shards):
     max_vector_size = 0
 
     for (shard, group) in requests.groupby('shard'):
-        load_vector = [0.0] * num_of_samples
+        load_vector = [0.0] * int(math.ceil(group['timestamp'].max() / period))
 
         for current_period_index in range(len(load_vector)):
             current_requests = group[(group['timestamp'] >= period * current_period_index) & (group['timestamp'] < period * (current_period_index + 1))]
+            # print("************")
+            # print(current_period_index)
+            # print(current_requests)
 
             if(not current_requests.empty):
                 for index, current_request in current_requests.iterrows():
@@ -77,45 +90,64 @@ def generate_load_vectors(requests, period, num_of_shards):
         
         save_load_vector(shard, vector)
 
-def calculate_load_vector(current_request, current_period_index, load_vector):
+def calculate_load_vector(current_request, current_load_index, load_vector):
     start_time = float(current_request['timestamp'])
     end_time = round(start_time + float(current_request['load']), 3)
+
     last_period_index = int(math.floor(end_time / period))
-    current_load = float(current_request['load']) / float(period)
+    first_period_index = int(math.floor(start_time / period))
+    num_of_periods = 1 + last_period_index - first_period_index
 
-    num_of_full_periods = last_period_index - current_period_index - 1
+    current_load = round(float(current_request['load']), 3)
+    
+    # print("******calculate_load_vector******")
+    # print("Current load: " + str(current_load))
 
-    if (num_of_full_periods == -1):
-        load_vector[current_period_index] = load_vector[current_period_index] + current_load
+    # print("Periods: " + str(num_of_periods))
 
-    if (num_of_full_periods == 0):
-        first_period_load = (((current_period_index + 1) * period - start_time) / float(period))
+    if (num_of_periods == 1):
+        load_vector[first_period_index] = load_vector[first_period_index] + normalize(current_load)
+
+    if (num_of_periods == 2):
+        first_period_load = (first_period_index + 1) * period - start_time
         second_period_load = current_load - first_period_load
 
-        load_vector[current_period_index] = load_vector[current_period_index] + first_period_load
+        first_period_load = normalize(first_period_load)
+        second_period_load = normalize(second_period_load)
 
-        if (len(load_vector) > current_period_index + 1):
-            load_vector[current_period_index + 1] = load_vector[current_period_index + 1] + second_period_load
+        load_vector[first_period_index] += first_period_load
+
+        if (len(load_vector) > first_period_index + 1):
+            load_vector[first_period_index + 1] += second_period_load
         else:
             load_vector.append(second_period_load)
 
-    if (num_of_full_periods > 0):
-        first_period_load = (((current_period_index + 1) * period - start_time) / float(period)) 
-        last_period_load = current_load - first_period_load - num_of_full_periods
+    if (num_of_periods > 2):
+        first_period_load = (first_period_index + 1) * period - start_time
+        num_of_full_periods = num_of_periods - 2
 
-        last_period_index = current_period_index + num_of_full_periods + 2
+        first_period_load = normalize(first_period_load)   
 
-        load_vector[current_period_index] = load_vector[current_period_index] + first_period_load
+        load_vector[current_load_index] = load_vector[current_load_index] + first_period_load
+
+        for index in range(num_of_full_periods):
+            current_index = first_period_index + index
+            if (len(load_vector) > current_index + 1):    
+                load_vector[current_index] = load_vector[current_index] + 1.0
+            else:
+                load_vector.append(1.0)
+        
+        last_period_load = normalize(current_load - first_period_load - num_of_full_periods)
 
         if (len(load_vector) > last_period_index):                
             load_vector[last_period_index] = load_vector[last_period_index] + last_period_load
         else:
             load_vector.append(last_period_load)
-
-        for j in range(num_of_full_periods):
-            load_vector[current_period_index + j + 1] = load_vector[current_period_index + j + 1] + 1
-            
+        
     return [round(load, 3) for load in load_vector]
+
+def normalize(load):
+    return round(load / float(period), 3)
 
 def save_load_vector(shard, load_vector):
     load_vector_file = open("./generator/load_vectors.csv", "a")
