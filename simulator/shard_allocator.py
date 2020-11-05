@@ -58,43 +58,32 @@ def sequential_allocation():
 
 def SALP_allocation():
     load_vectors_df = pd.read_csv("./generator/load_vectors.csv", header=None)
-    # print(load_vectors_df)
     WTS = load_vectors_df.sum(axis=0)
-    # print("WTS: \n", WTS)
     periods_in_vector = load_vectors_df.shape[1]
 
     NWTS = WTS / num_of_nodes
-    # print("NWTS: \n", NWTS)
 
     NWTS_module = calculate_vector_module(NWTS)
-    # print(NWTS_module)
 
     modules_list = []
 
-    current_shard = 0
-
     for index, row in load_vectors_df.iterrows():
-        current_shard = current_shard + 1
-        modules_list.append([calculate_vector_module(row), current_shard])
-
+        modules_list.append([calculate_vector_module(row), index + 1])
 
     modules_sorted_df = pd.DataFrame(modules_list, columns=["module", "shard"]).sort_values('module')
     list_load_vectors = load_vectors_df.values.tolist()
 
     list_inactive_nodes = []
 
-    # shards_in_node = [[] for _ in range(num_of_nodes) ] # FSJ
-    # loads_in_node = [[0] * periods_in_vector for _ in range(num_of_nodes)] # WSJ
-    # print(loads_in_node)
     zeros_list = [0] * periods_in_vector
     nodes_detail = []
     for node in range(num_of_nodes):
         nodes_detail.append([node + 1, [], zeros_list])
 
     nodes_detail_df = pd.DataFrame(nodes_detail, columns=['node', 'shards', 'load_vector'])
-    i = 0
+
     for shard in modules_sorted_df['shard']:
-        # break
+        
         node = calculate_node_for_shard(NWTS, nodes_detail_df['load_vector'].tolist(), list_load_vectors[shard - 1], list_inactive_nodes)
 
         shards_list = nodes_detail_df[nodes_detail_df.node == node]['shards'].item()
@@ -112,13 +101,19 @@ def SALP_allocation():
         nodes_detail_df = nodes_detail_df.append(to_append, ignore_index=True)
         
         if(calculate_vector_module(nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()) > NWTS_module):
-            # print("NWTS_module: ", NWTS_module)
-            # print("load_module: ", calculate_vector_module(nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()))
             list_inactive_nodes.append(node)
-            print(nodes_detail_df)
-        # print(list_inactive_nodes)
-        i = i + 1
-    print(nodes_detail_df)
+
+    shards_on_nodes = []
+
+    for index, row in nodes_detail_df.iterrows():
+        current_node = row["node"]
+
+        for shard in row["shards"]:
+            shards_on_nodes.append([shard, current_node])
+        
+    shards_on_nodes_df = pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
+    shards_on_nodes_df.to_csv("./simulator/shard_allocated.csv", index=False)
+
 def calculate_vector_module(row):
     sum = 0
     for current_value in range(len(row)):
@@ -127,15 +122,10 @@ def calculate_vector_module(row):
 
 def calculate_node_for_shard(NWTS, WSJ, WJ, list_inactive_nodes):
     deltas_j = []
-    # print("NWTS: ", NWTS)
-    # print("WSJ: ", WSJ)
-    # print("WJ: ", WJ)
-    # print("Inactive: ", list_inactive_nodes)
     for node in range(num_of_nodes):
         if(node + 1 not in list_inactive_nodes):
             deltas_j.append([node + 1, calculate_delta_j(NWTS, WSJ[node], WJ)])
             
-    # print(deltas_j)
     deltas_j_df = pd.DataFrame(deltas_j, columns=['node', 'delta_j'])
 
     return deltas_j_df[deltas_j_df.delta_j == deltas_j_df.delta_j.max()]['node'].head(1).item()
