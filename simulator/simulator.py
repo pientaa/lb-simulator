@@ -11,6 +11,7 @@ class RequestQueue:
 
     def produce(self, item):
         self.items = self.items.append(item)
+        self.items = self.items.sort_values(by=["expected_end_time"])
         
     def consume(self):
         consumed = self.items.head(1)
@@ -25,8 +26,11 @@ class ProcessingQueue(RequestQueue):
         """Removes only the first outdated request up to current timestamp and returns this request"""
         candidate = self.items.head(1)
 
-        if(float(candidate["timestamp"] + candidate["load"]) < current_timestamp):
-            candidate["actual_end_time"] = candidate["timestamp"] + candidate["load"]
+        print("CANDIDATE:")
+        print(candidate)
+
+        if((candidate["timestamp"].item() + candidate["load"].item()) < current_timestamp):
+            candidate = candidate.assign(actual_end_time = candidate["timestamp"].item() + candidate["load"].item())
             self.items.drop(candidate["id"], inplace=True)
             return candidate
         else:
@@ -60,42 +64,28 @@ def simulator():
     requests_awaiting = RequestQueue()
     requests_completed = RequestQueue()
 
-    # foo_req = requests.head(5)
-
-    # for index, req in foo_req.iterrows():
-    #     requests_processed.produce(req)
-
-    # dupa = requests_processed.consume()
-
-    # foo = requests_processed.removeAllOutdated(float(foo_req.tail(1)["timestamp"]) + 5.0)
-
-    # print(foo)
-
-    # print(requests_processed.items)
-
-
     for (node, shards) in shards_on_nodes.groupby('node'):
 
         requests_per_node = requests[requests["shard"].isin(shards["shard"].to_list())]
+
+        print(requests_per_node)
 
         for index, request in requests_per_node.iterrows():
             current_timestamp = request["timestamp"]
 
             # Check if requests awaiting needs to be processed and process them up to current timestamp
+            print(requests_awaiting.size())
             while(requests_awaiting.size() > 0):
                 removed_request = requests_processed.removeFirstOutdated(current_timestamp)
+                print(removed_request.items)
 
                 if (not removed_request.empty):
-                    # print("PRODUCING TO REMOVE")
-                    # print(request)
+                    print("PRODUCING TO REMOVE")
+                    print(request)
                     requests_completed.produce(removed_request)
                     awaiting_request = requests_awaiting.consume()
 
-                    print(awaiting_request)
-                    print(removed_request)
-                    print("DUDUDUDUDUDUDDUs")
                     awaiting_request = awaiting_request.assign(timestamp = removed_request["actual_end_time"].item())
-                    print(awaiting_request)
 
                     requests_processed.produce(awaiting_request)
                 else:
@@ -104,18 +94,22 @@ def simulator():
             removed_requests = requests_processed.removeAllOutdated(current_timestamp)
 
             if(not removed_requests.empty):
-                for req in removed_requests.iterrows():
+                for index, req in removed_requests.iterrows():
                     requests_completed.produce(req)
       
             if(requests_processed.size() < num_of_parallel_requests):
                 requests_processed.produce(request)
-                # print("PRODUCING TO PROCESS")
-                # print(request)
+                print("PRODUCING TO PROCESS")
+                print(request)
             else:
                 requests_awaiting.produce(request)
-                # print("PRODUCING TO AWAIT")
-                # print(request)
-    print(requests_completed)
+                print("PRODUCING TO AWAIT")
+                print(request)
+
+        # TODO: CONSUME AWAITING REQUESTS
+
+    print(requests_completed.items.sort_values(by=["timestamp"]))
+    print(requests_awaiting.items)
 
 
 if __name__ == "__main__":
