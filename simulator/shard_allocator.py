@@ -10,9 +10,6 @@ def shard_allocator():
     if (not algorithm in ["random", "sequential", "SALP"]):
         sys.exit("Pass one of allocation algorithms: random/sequential/SALP as third param.")
 
-    # if (num_of_shards < 100 * num_of_nodes):
-    #     sys.exit("There should be at least 100 times more shards than nodes.")
-
     if (algorithm == "random"):
         random_allocation()
 
