@@ -31,7 +31,7 @@ python generator/generator.py <number_of_shards> <number_of_samples> <period> <s
 
 Tasks are drawn from gamma distribution, but to be precise - as far as `shape` parameter is scalar -  it's Erlang distribution, whose mean and standard deviation can be calulated with following equations:
 
- &mu; = &alpha; * &beta;
+ &mu; = &alpha; * &beta; </br>
  &sigma; =  &beta; * √&alpha;
  
 ### Example of generated data
