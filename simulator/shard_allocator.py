@@ -10,9 +10,6 @@ def shard_allocator():
     if (not algorithm in ["random", "sequential", "SALP"]):
         sys.exit("Pass one of allocation algorithms: random/sequential/SALP as third param.")
 
-    # if (num_of_shards < 100 * num_of_nodes):
-    #     sys.exit("There should be at least 100 times more shards than nodes.")
-
     if (algorithm == "random"):
         random_allocation()
 
@@ -34,7 +31,7 @@ def random_allocation():
 
         shards_on_nodes.append([shard, current_node])
 
-        if ((i + 1) % 100 == 0):
+        if ((i + 1) % num_of_nodes == 0):
             current_node += 1
 
     shards_on_nodes_df = pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
@@ -49,7 +46,7 @@ def sequential_allocation():
 
         shards_on_nodes.append([shard + 1, current_node])
 
-        if ((shard + 1) % 100 == 0):
+        if ((shard + 1) % num_of_nodes == 0):
             current_node += 1
 
     shards_on_nodes_df = pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
