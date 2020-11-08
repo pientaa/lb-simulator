@@ -34,7 +34,7 @@ def random_allocation():
 
         shards_on_nodes.append([shard, current_node])
 
-        if ((i + 1) % 100 == 0):
+        if ((i + 1) % num_of_nodes == 0):
             current_node += 1
 
     shards_on_nodes_df = pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
@@ -49,7 +49,7 @@ def sequential_allocation():
 
         shards_on_nodes.append([shard + 1, current_node])
 
-        if ((shard + 1) % 100 == 0):
+        if ((shard + 1) % num_of_nodes == 0):
             current_node += 1
 
     shards_on_nodes_df = pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
