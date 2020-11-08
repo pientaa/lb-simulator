@@ -22,12 +22,18 @@ class RequestQueue:
         return len(self.items)
 
 class ProcessingQueue(RequestQueue):
+    def removeFirst(self):
+        """Removes only the first request and returns this request"""
+        candidate = self.items.head(1)
+
+        candidate = candidate.assign(actual_end_time = candidate["timestamp"].item() + candidate["load"].item())
+        self.items.drop(candidate["id"], inplace=True)
+        return candidate
+
+
     def removeFirstOutdated(self, current_timestamp):
         """Removes only the first outdated request up to current timestamp and returns this request"""
         candidate = self.items.head(1)
-
-        print("CANDIDATE:")
-        print(candidate)
 
         if((candidate["timestamp"].item() + candidate["load"].item()) < current_timestamp):
             candidate = candidate.assign(actual_end_time = candidate["timestamp"].item() + candidate["load"].item())
@@ -68,20 +74,13 @@ def simulator():
 
         requests_per_node = requests[requests["shard"].isin(shards["shard"].to_list())]
 
-        print(requests_per_node)
-
         for index, request in requests_per_node.iterrows():
             current_timestamp = request["timestamp"]
 
-            # Check if requests awaiting needs to be processed and process them up to current timestamp
-            print(requests_awaiting.size())
             while(requests_awaiting.size() > 0):
                 removed_request = requests_processed.removeFirstOutdated(current_timestamp)
-                print(removed_request.items)
 
                 if (not removed_request.empty):
-                    print("PRODUCING TO REMOVE")
-                    print(request)
                     requests_completed.produce(removed_request)
                     awaiting_request = requests_awaiting.consume()
 
@@ -99,17 +98,27 @@ def simulator():
       
             if(requests_processed.size() < num_of_parallel_requests):
                 requests_processed.produce(request)
-                print("PRODUCING TO PROCESS")
-                print(request)
             else:
                 requests_awaiting.produce(request)
-                print("PRODUCING TO AWAIT")
-                print(request)
 
         # TODO: CONSUME AWAITING REQUESTS
+        while(requests_processed.size() > 0 or requests_awaiting.size() > 0):
+            removed_request = requests_processed.removeFirst()
+            
+            requests_completed.produce(removed_request)
 
-    print(requests_completed.items.sort_values(by=["timestamp"]))
-    print(requests_awaiting.items)
+            awaiting_request = requests_awaiting.consume()
+
+            awaiting_request = awaiting_request.assign(timestamp = removed_request["actual_end_time"].item())
+
+            requests_processed.produce(awaiting_request)
+
+
+    requests_completed_df = requests_completed.items.sort_values(by=["timestamp"]).assign(
+        delay = lambda dataframe: dataframe["actual_end_time"] - dataframe["expected_end_time"]
+    ).round(3)
+
+    requests_completed_df.to_csv('./simulator/requests_completed.csv', index=False) 
 
 
 if __name__ == "__main__":
