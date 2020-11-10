@@ -107,11 +107,12 @@ def simulator():
             
             requests_completed.produce(removed_request)
 
-            awaiting_request = requests_awaiting.consume()
+            if(not requests_awaiting.isEmpty()):
+                awaiting_request = requests_awaiting.consume()
 
-            awaiting_request = awaiting_request.assign(timestamp = removed_request["actual_end_time"].item())
+                awaiting_request = awaiting_request.assign(timestamp = removed_request["actual_end_time"].item())
 
-            requests_processed.produce(awaiting_request)
+                requests_processed.produce(awaiting_request)
 
 
     requests_completed_df = requests_completed.items.sort_values(by=["timestamp"]).assign(
