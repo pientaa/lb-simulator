@@ -8,14 +8,17 @@ import matplotlib.pyplot as plt
 import scipy.special as sps  
 from itertools import chain
 
+period = 5.0
 
-def generator(num_of_shards, num_of_samples, period, shape, scale):
+
+def generator(num_of_shards, num_of_samples, new_period, shape, scale):
+    global period
+    period = new_period
+    clear_directory()
 
     tasks = [int(round(number, 0)) for number in np.random.gamma(shape, scale, num_of_samples)]
 
-    # print(tasks)
-
-    timestamps = [round(number, 3) for number in generate_time_stamps(tasks, period)]
+    timestamps = [round(number, 3) for number in generate_time_stamps(tasks)]
 
 # We can parametrize this distribution in the future, too
     loads = [round(number, 3) for number in np.random.gamma(2.0, 2.0, len(timestamps))]
@@ -41,9 +44,9 @@ def generator(num_of_shards, num_of_samples, period, shape, scale):
     plt.plot(bins, y, linewidth=2, color='r')  
     plt.show()
 
-    generate_load_vectors(requests, period, num_of_shards)
+    generate_load_vectors(requests, num_of_shards)
 
-def generate_time_stamps(tasks, period):
+def generate_time_stamps(tasks):
     timestamps = []
     for i in range(len(tasks)):
         random_t = np.random.gamma(1.0, 1.0, tasks[i])
@@ -62,7 +65,7 @@ def normalize_vector(v):
 def flatten(listOfLists):
     return list(chain.from_iterable(listOfLists))
 
-def generate_load_vectors(requests, period, num_of_shards):
+def generate_load_vectors(requests, num_of_shards):
     load_vectors = []
     max_vector_size = 0
 
@@ -156,9 +159,4 @@ def clear_directory():
         os.system("rm -f ./generator/requests.csv")
 
 if __name__ == "__main__":
-    period = float(sys.argv[3])
-    num_of_samples = int(sys.argv[2])
-
-    clear_directory()
-
     generator(int(sys.argv[1]), int(sys.argv[2]), float(sys.argv[3]), float(sys.argv[4]), float(sys.argv[5]))

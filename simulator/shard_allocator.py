@@ -4,8 +4,15 @@ import sys
 import numpy as np
 import math
 
+num_of_shards = 0
+num_of_nodes = 0
+algorithm = ''
 
-def shard_allocator():
+def shard_allocator(shards, nodes, algorithm_name):
+    global num_of_shards, num_of_nodes, algorithm
+    num_of_shards = shards
+    num_of_nodes = nodes
+    algorithm = algorithm_name
 
     if (not algorithm in ["random", "sequential", "SALP"]):
         sys.exit("Pass one of allocation algorithms: random/sequential/SALP as third param.")
@@ -153,8 +160,5 @@ def calculate_diff_list(list1, list2):
     return difference
 
 if __name__ == "__main__":
-    num_of_shards = int(sys.argv[1])
-    num_of_nodes = int(sys.argv[2])
-    algorithm = str(sys.argv[3])
 
     shard_allocator()
