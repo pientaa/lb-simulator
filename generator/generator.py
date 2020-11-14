@@ -3,7 +3,6 @@ import pandas as pd
 import sys
 import random
 import math
-import os
 import matplotlib.pyplot as plt
 import scipy.special as sps  
 from itertools import chain
@@ -14,7 +13,6 @@ period = 5.0
 def generator(num_of_shards, num_of_samples, new_period, shape, scale):
     global period
     period = new_period
-    clear_directory()
 
     tasks = [int(round(number, 0)) for number in np.random.gamma(shape, scale, num_of_samples)]
 
@@ -35,8 +33,6 @@ def generator(num_of_shards, num_of_samples, new_period, shape, scale):
 
     assert len(requests) == sum
 
-    requests.to_csv('./generator/requests.csv') 
-
 # Plot density
     count, bins, ignored = plt.hist(tasks, 25, density=True)
     y = bins**(shape-1)*(np.exp(-bins/scale) /  
@@ -44,7 +40,7 @@ def generator(num_of_shards, num_of_samples, new_period, shape, scale):
     plt.plot(bins, y, linewidth=2, color='r')  
     plt.show()
 
-    generate_load_vectors(requests, num_of_shards)
+    return requests, generate_load_vectors(requests, num_of_shards)
 
 def generate_time_stamps(tasks):
     timestamps = []
@@ -87,8 +83,8 @@ def generate_load_vectors(requests, num_of_shards):
     for vector in load_vectors:
         while (len(vector) < max_vector_size):
             vector.append(0.0)
-        
-        save_load_vector(shard, vector)
+    
+    return load_vectors
 
 def calculate_load_vector(current_request, current_load_index, load_vector):
     start_time = float(current_request['timestamp'])
@@ -143,20 +139,6 @@ def calculate_load_vector(current_request, current_load_index, load_vector):
 
 def normalize(load):
     return round(load / float(period), 3)
-
-def save_load_vector(shard, load_vector):
-    load_vector_file = open("./generator/load_vectors.csv", "a")
-    load_vector_string = ','.join(map(str, load_vector)) + "\n"
-    load_vector_file.write(load_vector_string)
-    load_vector_file.close()
-
-def clear_directory():
-    try:
-        os.remove("generator/requests.csv")
-        os.remove("generator/load_vectors.csv")
-    except OSError:
-        os.system("rm -f ./generator/load_vectors.csv")
-        os.system("rm -f ./generator/requests.csv")
 
 if __name__ == "__main__":
     generator(int(sys.argv[1]), int(sys.argv[2]), float(sys.argv[3]), float(sys.argv[4]), float(sys.argv[5]))

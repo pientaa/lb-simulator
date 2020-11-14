@@ -126,7 +126,7 @@ def simulator(parallel_requests, new_period):
         delay = lambda dataframe: dataframe["actual_end_time"] - dataframe["expected_end_time"]
     ).round(3)
 
-    requests_completed_df.to_csv('./simulator/requests_completed.csv', index=False) 
+    return requests_completed_df
 
 
 if __name__ == "__main__":

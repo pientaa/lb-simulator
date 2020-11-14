@@ -18,14 +18,15 @@ def shard_allocator(shards, nodes, algorithm_name):
         sys.exit("Pass one of allocation algorithms: random/sequential/SALP as third param.")
 
     if (algorithm == "random"):
-        random_allocation()
+        shards_on_nodes_df = random_allocation()
 
     if (algorithm == "sequential"):
-        sequential_allocation()
+        shards_on_nodes_df = sequential_allocation()
 
     if (algorithm == "SALP"):
-        SALP_allocation()
-
+        shards_on_nodes_df = SALP_allocation()
+    
+    return shards_on_nodes_df
 
 def random_allocation():
     shards_on_nodes = []
@@ -41,9 +42,7 @@ def random_allocation():
         if ((i + 1) % num_of_nodes == 0):
             current_node += 1
 
-    shards_on_nodes_df = pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
-    shards_on_nodes_df.sort_values('shard').to_csv("./simulator/shard_allocated.csv", index=False)
-
+    return pd.DataFrame(shards_on_nodes, columns=["shard", "node"]).sort_values('shard')
 
 def sequential_allocation():
     shards_on_nodes = []
@@ -56,8 +55,7 @@ def sequential_allocation():
         if ((shard + 1) % num_of_nodes == 0):
             current_node += 1
 
-    shards_on_nodes_df = pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
-    shards_on_nodes_df.to_csv("./simulator/shard_allocated.csv", index=False)
+    return pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
 
 
 def SALP_allocation():
@@ -115,8 +113,7 @@ def SALP_allocation():
         for shard in row["shards"]:
             shards_on_nodes.append([shard, current_node])
         
-    shards_on_nodes_df = pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
-    shards_on_nodes_df.to_csv("./simulator/shard_allocated.csv", index=False)
+    return pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
 
 def calculate_vector_module(row):
     sum = 0
