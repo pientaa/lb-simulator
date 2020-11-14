@@ -2,6 +2,9 @@ import numpy as np
 import pandas as pd
 import sys
 
+num_of_parallel_requests = 5
+period = 5.0
+
 class RequestQueue:
     def __init__(self):
         self.items = pd.DataFrame(columns=["id", "timestamp", "shard", "load", "expected_end_time", "actual_end_time"])
@@ -55,7 +58,11 @@ class ProcessingQueue(RequestQueue):
         return items_removed
 
 
-def simulator():
+def simulator(parallel_requests, new_period):
+    global num_of_parallel_requests, period
+    num_of_parallel_requests = parallel_requests
+    period = new_period
+    
     requests = pd.read_csv("./generator/requests.csv")
     
     requests = requests.assign(
@@ -119,10 +126,8 @@ def simulator():
         delay = lambda dataframe: dataframe["actual_end_time"] - dataframe["expected_end_time"]
     ).round(3)
 
-    requests_completed_df.to_csv('./simulator/requests_completed.csv', index=False) 
+    return requests_completed_df
 
 
 if __name__ == "__main__":
-    num_of_parallel_requests = int(sys.argv[1])
-    period = float(sys.argv[2])
     simulator()
