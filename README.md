@@ -1,5 +1,8 @@
 # lb-simulator
 
+[![HitCount](http://hits.dwyl.com/pientaa/lb-simulator.svg)](http://hits.dwyl.com/pientaa/lb-simulator)
+
+
 ## Table of contents
 
 - [lb-simulator](#lb-simulator)
