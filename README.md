@@ -37,7 +37,7 @@ Tasks are drawn from gamma distribution, but to be precise - as far as `shape` p
 ### Example of generated data
 
 ```python
-generator(5 10 5 2 2)
+generator(5, 10, 5, 2, 2)
 ```
 
 
