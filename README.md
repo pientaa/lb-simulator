@@ -10,6 +10,7 @@
     + [Example of generated data](#example-of-generated-data)
       - [Requests](#requests)
       - [Load vectors](#load-vectors)
+  * [Shard allocator](#shard-allocator)
   * [Simulator](#simulator)
  
 ## Generator
@@ -111,5 +112,7 @@ generator(5, 10, 5, 2, 2)
 |0.014|1.425|1.342|0.698|0.559|0.438|0.755|0.067|2.868|3.326|3.502|1.305|
 |0.717|0.0  |4.049|1.235|1.889|4.04 |0.0  |1.386|0.43 |1.254|0.81 |0.0  |
 |0.0  |0.0  |0.357|0.035|0.325|0.293|0.078|0.0  |3.184|2.554|0.0  |0.0  |
+
+## Shard allocator
 
 ## Simulator
