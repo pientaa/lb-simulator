@@ -129,6 +129,9 @@ Example of load vectors
 
 ## Shard allocator
 
-
+Shard allocator is able to allocate shards on nodes according to one of three algorithms:
+- `random` - evenly distribute shards on nodes with random order
+- `sequential` - evenly distribute shards on nodes with sequential order
+- `SALP` - Shards Allocation based on Load Prediction
 
 ## Simulator
