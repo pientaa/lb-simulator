@@ -23,9 +23,9 @@ Generator takes following parameters:
  
 #### Run
 
-Generate requests and load vectors:
-```ssh
-python generator/generator.py <number_of_shards> <number_of_samples> <period> <shape> <size>
+Generate requests and load vectors using following function from `generator` module:
+```python
+def generator(num_of_shards, num_of_samples, new_period, shape, scale)
 ```
 #### Tasks distribution
 
@@ -36,8 +36,8 @@ Tasks are drawn from gamma distribution, but to be precise - as far as `shape` p
  
 ### Example of generated data
 
-```ssh
-python3.6 generator/generator.py 5 10 5 2 2
+```python
+generator(5 10 5 2 2)
 ```
 
 
