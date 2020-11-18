@@ -85,6 +85,7 @@ generator(5, 10, 5, 2, 2)
  <summary>
 Example of requests
  </summary>
+
 |  id  |timestamp|shard|load  |
 |------|---------|-----|------|
 |0     |1.56     |1    |12.221|
