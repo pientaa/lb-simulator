@@ -84,7 +84,6 @@ def SALP_allocation():
         nodes_detail.append([node + 1, [], zeros_list])
 
     nodes_detail_df = pd.DataFrame(nodes_detail, columns=['node', 'shards', 'load_vector'])
-    shards_done = 1
     for shard in modules_sorted_df['shard']:
 
         node = calculate_node_for_shard(NWTS, nodes_detail_df, modules_sorted_df[modules_sorted_df.shard == shard]['load_vector'].item(), list_inactive_nodes)
@@ -106,9 +105,6 @@ def SALP_allocation():
         if(calculate_vector_module(nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()) > NWTS_module):
             list_inactive_nodes.append(node)
 
-        print("Liczba shardów zaalokowanych: " + str(shards_done))
-        shards_done = shards_done + 1
-
     shards_on_nodes = []
 
     for index, row in nodes_detail_df.iterrows():
@@ -116,8 +112,7 @@ def SALP_allocation():
 
         for shard in row["shards"]:
             shards_on_nodes.append([shard, current_node])
-
-    print(shards_on_nodes)   
+ 
     return pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
 
 def calculate_vector_module(row):
