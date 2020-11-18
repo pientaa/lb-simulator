@@ -7,11 +7,13 @@
   * [Generator](#generator)
       - [Run](#run)
       - [Tasks distribution](#tasks-distribution)
-    + [Example of generated data](#example-of-generated-data)
-      - [Requests](#requests)
-      - [Load vectors](#load-vectors)
   * [Shard allocator](#shard-allocator)
   * [Simulator](#simulator)
+  * [Example of generated data](#example-of-generated-data)
+    + [Requests](#requests)
+      - [Load vectors](#load-vectors)
+    + [Shard allocated](#shard-allocated)
+
  
 ## Generator
 
@@ -28,104 +30,14 @@ Generate requests and load vectors using following function from `generator` mod
 ```python
 def generator(num_of_shards, num_of_samples, new_period, shape, scale)
 ```
+
 #### Tasks distribution
 
 Tasks are drawn from gamma distribution, but to be precise - as far as `shape` parameter is scalar -  it's Erlang distribution, whose mean and standard deviation can be calulated with following equations:
 
  &mu; = &alpha; * &beta; </br>
  &sigma; =  &beta; * √&alpha;
- 
-### Example of generated data
 
-```python
-generator(5, 10, 5, 2, 2)
-```
-
-
-#### Requests
-
-<details>
- <summary>
-Example of requests
- </summary>
-
-|id|timestamp|shard|load |
-|------|---------|-----|-----|
-|0     |0.575    |4    |3.587|
-|1     |0.595    |2    |2.481|
-|2     |4.93     |3    |2.566|
-|3     |5.08     |3    |4.547|
-|4     |5.925    |1    |15.63|
-|5     |9.915    |3    |3.536|
-|6     |10.19    |2    |2.098|
-|7     |10.43    |5    |1.783|
-|8     |10.545   |4    |0.606|
-|9     |10.645   |4    |2.185|
-|10    |11.095   |2    |3.723|
-|11    |11.74    |3    |5.347|
-|12    |11.84    |4    |4.333|
-|13    |12.53    |4    |13.207|
-|14    |13.175   |4    |8.572|
-|15    |15.505   |3    |1.407|
-|16    |16.205   |1    |7.395|
-|17    |19.825   |5    |1.8  |
-|18    |20.62    |4    |2.242|
-|19    |22.205   |3    |4.986|
-|20    |22.5     |2    |1.005|
-|21    |23.675   |2    |0.899|
-|22    |25.98    |4    |2.884|
-|23    |28.4     |4    |8.25 |
-|24    |28.535   |5    |1.857|
-|25    |30.925   |1    |8.524|
-|26    |31.135   |2    |1.405|
-|27    |31.795   |3    |3.347|
-|28    |34.43    |3    |0.763|
-|29    |38.32    |1    |2.269|
-|30    |38.74    |1    |2.793|
-|31    |40.005   |5    |1.767|
-|32    |40.105   |5    |8.903|
-|33    |40.23    |2    |4.558|
-|34    |40.235   |4    |2.15 |
-|35    |40.295   |3    |12.854|
-|36    |40.365   |3    |5.065|
-|37    |40.365   |1    |0.078|
-|38    |40.71    |1    |1.705|
-|39    |40.785   |2    |3.965|
-|40    |41.13    |5    |6.327|
-|41    |41.285   |5    |1.459|
-|42    |42.02    |5    |7.739|
-|43    |44.05    |5    |1.866|
-|44    |45.01    |2    |1.985|
-|45    |45.05    |3    |0.505|
-|46    |45.16    |3    |9.694|
-|47    |45.765   |5    |0.628|
-|48    |45.89    |4    |8.159|
-|49    |46.435   |1    |2.392|
-|50    |46.705   |4    |2.158|
-|51    |46.895   |3    |8.148|
-|52    |47.25    |3    |4.49 |
-|53    |48.16    |1    |3.889|
-
-</details>
-
-
-
-#### Load vectors
-
-<details>
- <summary>
-Example of load vectors
- </summary>
-
-| [1] | [2] | [3] | [4] | [5] | [6] | [7] | [8] | [9] | [10] | [11] | [12] 
-|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|---|
-|0.0  |1.815|1.0  |0.759|3.283|0.0  |0.815|1.478|0.782|0.846|0.41 |0.0  |
-|0.496|0.0  |1.165|0.0  |0.381|0.0  |0.281|0.0  |1.705|0.397|0.0  |0.0  |
-|0.014|1.425|1.342|0.698|0.559|0.438|0.755|0.067|2.868|3.326|3.502|1.305|
-|0.717|0.0  |4.049|1.235|1.889|4.04 |0.0  |1.386|0.43 |1.254|0.81 |0.0  |
-|0.0  |0.0  |0.357|0.035|0.325|0.293|0.078|0.0  |3.184|2.554|0.0  |0.0  |
-
-</details>
 
 ## Shard allocator
 
@@ -134,4 +46,103 @@ Shard allocator is able to allocate shards on nodes according to one of three al
 - `sequential` - evenly distribute shards on nodes with sequential order
 - `SALP` - Shards Allocation based on Load Prediction
 
+```python
+def shard_allocator(shards, nodes, algorithm_name):
+```
+
+- `shards` - number of shards
+- `nodes` - number of nodes
+- `algorithm_name` - one of listed above algorithm `random`/`sequential`/`SALP`
+
+
 ## Simulator
+
+
+## Example of generated data
+
+
+```python
+generator(5, 10, 5, 2, 2)
+```
+
+### Requests
+
+<details>
+ <summary>
+Example of requests
+ </summary>
+
+|  id  |timestamp|shard|load |
+|------|---------|-----|-----|
+|0     |1.23     |3    |3.266|
+|1     |3.27     |4    |3.861|
+|2     |3.58     |4    |7.198|
+|3     |5.02     |3    |3.022|
+|4     |5.305    |4    |1.727|
+|5     |5.31     |5    |1.729|
+|6     |5.63     |1    |5.434|
+|7     |6.155    |1    |7.069|
+|8     |6.835    |2    |3.011|
+|9     |7.695    |4    |12.173|
+|10    |8.525    |1    |4.723|
+|11    |11.09    |5    |11.399|
+|12    |12.67    |5    |1.523|
+|13    |14.085   |1    |1.942|
+|14    |17.365   |1    |2.025|
+|15    |19.405   |3    |11.537|
+|16    |20.25    |3    |1.623|
+|17    |24.995   |3    |2.994|
+|18    |25.795   |3    |3.882|
+|19    |25.97    |3    |1.371|
+|20    |29.84    |4    |3.541|
+|21    |32.645   |3    |0.743|
+|22    |34.245   |1    |1.99 |
+|23    |38.515   |1    |5.539|
+|24    |38.555   |2    |9.327|
+|25    |41.55    |4    |6.34 |
+|26    |44.755   |1    |9.249|
+|27    |45.22    |4    |3.795|
+|28    |45.275   |4    |6.259|
+|29    |49.99    |2    |2.705|
+
+</details>
+
+#### Load vectors
+
+<details>
+ <summary>
+Example of load vectors
+ </summary>
+
+| [1] | [2] | [3] | [4] | [5] | [6] | [7] | [8] | [9] | [10] | [11] |
+|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|
+|0.0  |1.938|1.691|0.61 |0.0  |0.0  |0.151|0.544|0.86|1.0  |1.64 |
+|0.0  |0.602|0.0  |0.0  |0.0  |0.0  |0.0  |1.289|0.0 |1.61 |0.539|
+|0.653|0.604|0.0  |1.119|1.326|1.648|2.033|0.0  |0.0 |0.0  |0.0  |
+|1.63 |2.232|1.183|2.142|0.0  |0.032|0.676|0.0  |0.69|2.282|0.307|
+|0.0  |0.346|1.087|1.0  |1.923|0.0  |0.0  |0.0  |0.0 |0.0  |0.0  |
+
+
+</details>
+
+
+### Shard allocated
+
+```python
+shard_allocator(shards, nodes, algorithm_name):
+```
+
+<details>
+ <summary>
+Example of shards allocated with random algorithm
+ </summary>
+
+|shard|node |
+|-----|-----|
+|1    |2    |
+|2    |2    |
+|3    |1    |
+|4    |1    |
+|5    |2    |
+
+</details>
