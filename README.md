@@ -148,11 +148,11 @@ Example of load vectors
 </details>
 
 
-### Shard allocated
-
 ```python
 shard_allocator(shards, nodes, algorithm_name):
 ```
+
+### Shard allocated
 
 <details>
  <summary>
@@ -169,6 +169,10 @@ Example of shards allocated with random algorithm
 
 </details>
 
+
+```python
+simulator(3, 5)
+```
 
 ### Output from simulator
 
