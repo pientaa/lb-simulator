@@ -10,10 +10,10 @@
   * [Shard allocator](#shard-allocator)
   * [Simulator](#simulator)
   * [Example of generated data](#example-of-generated-data)
-    + [Requests](#requests)
+    + [Generated requests](#generated-requests)
     + [Load vectors](#load-vectors)
     + [Shard allocated](#shard-allocated)
-    + [Simulator](#simulator)
+    + [Output from simulator](#output-from-simulator)
 
  
 ## Generator
@@ -79,7 +79,7 @@ Simulator algorithm:
 generator(5, 10, 5, 2, 2)
 ```
 
-### Requests
+### Generated requests
 
 <details>
  <summary>
@@ -170,7 +170,7 @@ Example of shards allocated with random algorithm
 </details>
 
 
-### Simulator
+### Output from simulator
 
 <details>
  <summary>
