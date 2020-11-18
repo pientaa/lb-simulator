@@ -11,7 +11,7 @@
   * [Simulator](#simulator)
   * [Example of generated data](#example-of-generated-data)
     + [Requests](#requests)
-      - [Load vectors](#load-vectors)
+    + [Load vectors](#load-vectors)
     + [Shard allocated](#shard-allocated)
 
  
@@ -107,7 +107,7 @@ Example of requests
 
 </details>
 
-#### Load vectors
+### Load vectors
 
 <details>
  <summary>
