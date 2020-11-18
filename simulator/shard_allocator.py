@@ -72,10 +72,9 @@ def SALP_allocation():
     modules_list = []
 
     for index, row in load_vectors_df.iterrows():
-        modules_list.append([calculate_vector_module(row), index + 1])
+        modules_list.append([calculate_vector_module(row), index + 1, row])
 
-    modules_sorted_df = pd.DataFrame(modules_list, columns=["module", "shard"]).sort_values('module')
-    list_load_vectors = load_vectors_df.values.tolist()
+    modules_sorted_df = pd.DataFrame(modules_list, columns=["module", "shard", "load_vector"]).sort_values('module', ascending = False)
 
     list_inactive_nodes = []
 
@@ -85,16 +84,15 @@ def SALP_allocation():
         nodes_detail.append([node + 1, [], zeros_list])
 
     nodes_detail_df = pd.DataFrame(nodes_detail, columns=['node', 'shards', 'load_vector'])
-
     for shard in modules_sorted_df['shard']:
-        
-        node = calculate_node_for_shard(NWTS, nodes_detail_df['load_vector'].tolist(), list_load_vectors[shard - 1], list_inactive_nodes)
+
+        node = calculate_node_for_shard(NWTS, nodes_detail_df, modules_sorted_df[modules_sorted_df.shard == shard]['load_vector'].item(), list_inactive_nodes)
 
         shards_list = nodes_detail_df[nodes_detail_df.node == node]['shards'].item()
         shards_list.append(shard)
 
         node_load = nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()
-        node_load = calculate_sum_list(node_load, list_load_vectors[shard - 1])
+        node_load = calculate_sum_list(node_load, modules_sorted_df[modules_sorted_df.shard == shard]['load_vector'].item())
 
         row_index = nodes_detail_df[nodes_detail_df.node == node].index.item()
 
@@ -103,7 +101,7 @@ def SALP_allocation():
         to_append = {'node':node, 'shards': shards_list, 'load_vector': node_load}
 
         nodes_detail_df = nodes_detail_df.append(to_append, ignore_index=True)
-        
+
         if(calculate_vector_module(nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()) > NWTS_module):
             list_inactive_nodes.append(node)
 
@@ -114,7 +112,7 @@ def SALP_allocation():
 
         for shard in row["shards"]:
             shards_on_nodes.append([shard, current_node])
-        
+ 
     return pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
 
 def calculate_vector_module(row):
@@ -123,15 +121,17 @@ def calculate_vector_module(row):
         sum = sum + row[current_value] ** 2
     return math.sqrt(sum)
 
-def calculate_node_for_shard(NWTS, WSJ, WJ, list_inactive_nodes):
+def calculate_node_for_shard(NWTS, WSJ_df, WJ, list_inactive_nodes):
     deltas_j = []
+
     for node in range(num_of_nodes):
         if(node + 1 not in list_inactive_nodes):
-            deltas_j.append([node + 1, calculate_delta_j(NWTS, WSJ[node], WJ)])
-            
+            deltas_j.append([node + 1, calculate_delta_j(NWTS, WSJ_df[WSJ_df.node == node + 1]['load_vector'].item(), WJ)])
+        
     deltas_j_df = pd.DataFrame(deltas_j, columns=['node', 'delta_j'])
 
     return deltas_j_df[deltas_j_df.delta_j == deltas_j_df.delta_j.max()]['node'].head(1).item()
+
 def calculate_delta_j(NWTS, WSJ, WJ):
     first_vector_module = calculate_vector_module(calculate_diff_list(WSJ, NWTS))
     second_vector_module = calculate_vector_module(calculate_diff_list(calculate_sum_list(WSJ, WJ), NWTS))
