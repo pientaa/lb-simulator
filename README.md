@@ -20,7 +20,7 @@
 Generator takes following parameters:
 - `num_of_shards`, which defines number of vectors that will be generated - it's identical to number of shards located in total on cloud.
 - `num_of_samples`, which defines nomber of periods that will be considered when generating tasks.
-- `period`, which defines the amount of time related to one element of load vector.
+- `new_period`, which defines the amount of time related to one element of load vector. Default value is `5.0`
 - `shape`, which defines &alpha; parameter of gamma distribution from which number of tasks per period will be drawn.
 - `size`, which defines &beta; parameter of gamma distribution from which number of tasks per period will be drawn.
  
@@ -56,6 +56,19 @@ def shard_allocator(shards, nodes, algorithm_name):
 
 
 ## Simulator
+
+```python
+def simulator(parallel_requests, new_period):
+```
+
+Simulator takes two parameters:
+- `parallel_requests` - number of requests that could be processed on node at once,
+- `new_period`, which defines the amount of time related to one element of load vector. Default value is `5.0`.
+
+
+Simulator algorithm:
+
+![simulator algorithm](./simulator/simulator_algorithm_EN.png)
 
 
 ## Example of generated data
