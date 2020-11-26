@@ -1,12 +1,13 @@
+import math
+import sys
+
 import numpy as np
 import pandas as pd
-import sys
-import numpy as np
-import math
 
 num_of_shards = 0
 num_of_nodes = 0
 algorithm = ''
+
 
 def shard_allocator(shards, nodes, algorithm_name):
     global num_of_shards, num_of_nodes, algorithm
@@ -14,19 +15,23 @@ def shard_allocator(shards, nodes, algorithm_name):
     num_of_nodes = nodes
     algorithm = algorithm_name
 
-    if (not algorithm in ["random", "sequential", "SALP"]):
+    print("Shard allocation started with following params:")
+    print("{ shards: " + str(num_of_shards) + ", nodes: " + str(num_of_nodes) + ", algorithm: " + algorithm + "  } \n")
+
+    if algorithm not in ["random", "sequential", "SALP"]:
         sys.exit("Pass one of allocation algorithms: random/sequential/SALP as third param.")
 
-    if (algorithm == "random"):
+    if algorithm == "random":
         shards_on_nodes_df = random_allocation()
 
-    if (algorithm == "sequential"):
+    if algorithm == "sequential":
         shards_on_nodes_df = sequential_allocation()
 
-    if (algorithm == "SALP"):
+    if algorithm == "SALP":
         shards_on_nodes_df = SALP_allocation()
-    
+
     return shards_on_nodes_df
+
 
 def random_allocation():
     shards_on_nodes = []
@@ -39,11 +44,12 @@ def random_allocation():
 
         shards_on_nodes.append([shard, current_node])
 
-        if ((i + 1) % int(num_of_shards / num_of_nodes) == 0):
-            if(current_node != num_of_nodes):
+        if (i + 1) % int(num_of_shards / num_of_nodes) == 0:
+            if current_node != num_of_nodes:
                 current_node += 1
 
     return pd.DataFrame(shards_on_nodes, columns=["shard", "node"]).sort_values('shard')
+
 
 def sequential_allocation():
     shards_on_nodes = []
@@ -53,8 +59,8 @@ def sequential_allocation():
 
         shards_on_nodes.append([shard + 1, current_node])
 
-        if ((shard + 1) % int(num_of_shards / num_of_nodes) == 0):
-            if(current_node != num_of_nodes):
+        if (shard + 1) % int(num_of_shards / num_of_nodes) == 0:
+            if current_node != num_of_nodes:
                 current_node += 1
 
     return pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
@@ -74,7 +80,8 @@ def SALP_allocation():
     for index, row in load_vectors_df.iterrows():
         modules_list.append([calculate_vector_module(row), index + 1, row])
 
-    modules_sorted_df = pd.DataFrame(modules_list, columns=["module", "shard", "load_vector"]).sort_values('module', ascending = False)
+    modules_sorted_df = pd.DataFrame(modules_list, columns=["module", "shard", "load_vector"]).sort_values('module',
+                                                                                                           ascending=False)
 
     list_inactive_nodes = []
 
@@ -86,23 +93,26 @@ def SALP_allocation():
     nodes_detail_df = pd.DataFrame(nodes_detail, columns=['node', 'shards', 'load_vector'])
     for shard in modules_sorted_df['shard']:
 
-        node = calculate_node_for_shard(NWTS, nodes_detail_df, modules_sorted_df[modules_sorted_df.shard == shard]['load_vector'].item(), list_inactive_nodes)
+        node = calculate_node_for_shard(NWTS, nodes_detail_df,
+                                        modules_sorted_df[modules_sorted_df.shard == shard]['load_vector'].item(),
+                                        list_inactive_nodes)
 
         shards_list = nodes_detail_df[nodes_detail_df.node == node]['shards'].item()
         shards_list.append(shard)
 
         node_load = nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()
-        node_load = calculate_sum_list(node_load, modules_sorted_df[modules_sorted_df.shard == shard]['load_vector'].item())
+        node_load = calculate_sum_list(node_load,
+                                       modules_sorted_df[modules_sorted_df.shard == shard]['load_vector'].item())
 
         row_index = nodes_detail_df[nodes_detail_df.node == node].index.item()
 
         nodes_detail_df.drop([row_index], inplace=True)
 
-        to_append = {'node':node, 'shards': shards_list, 'load_vector': node_load}
+        to_append = {'node': node, 'shards': shards_list, 'load_vector': node_load}
 
         nodes_detail_df = nodes_detail_df.append(to_append, ignore_index=True)
 
-        if(calculate_vector_module(nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()) > NWTS_module):
+        if calculate_vector_module(nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()) > NWTS_module:
             list_inactive_nodes.append(node)
 
     shards_on_nodes = []
@@ -112,8 +122,9 @@ def SALP_allocation():
 
         for shard in row["shards"]:
             shards_on_nodes.append([shard, current_node])
- 
+
     return pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
+
 
 def calculate_vector_module(row):
     sum = 0
@@ -121,22 +132,26 @@ def calculate_vector_module(row):
         sum = sum + row[current_value] ** 2
     return math.sqrt(sum)
 
+
 def calculate_node_for_shard(NWTS, WSJ_df, WJ, list_inactive_nodes):
     deltas_j = []
 
     for node in range(num_of_nodes):
-        if(node + 1 not in list_inactive_nodes):
-            deltas_j.append([node + 1, calculate_delta_j(NWTS, WSJ_df[WSJ_df.node == node + 1]['load_vector'].item(), WJ)])
-        
+        if node + 1 not in list_inactive_nodes:
+            deltas_j.append(
+                [node + 1, calculate_delta_j(NWTS, WSJ_df[WSJ_df.node == node + 1]['load_vector'].item(), WJ)])
+
     deltas_j_df = pd.DataFrame(deltas_j, columns=['node', 'delta_j'])
 
     return deltas_j_df[deltas_j_df.delta_j == deltas_j_df.delta_j.max()]['node'].head(1).item()
+
 
 def calculate_delta_j(NWTS, WSJ, WJ):
     first_vector_module = calculate_vector_module(calculate_diff_list(WSJ, NWTS))
     second_vector_module = calculate_vector_module(calculate_diff_list(calculate_sum_list(WSJ, WJ), NWTS))
 
     return first_vector_module - second_vector_module
+
 
 def calculate_sum_list(list1, list2):
     sum = []
@@ -145,8 +160,9 @@ def calculate_sum_list(list1, list2):
 
     for list1_i, list2_i in zip_object:
         sum.append(list1_i + list2_i)
-    
+
     return sum
+
 
 def calculate_diff_list(list1, list2):
     difference = []
@@ -155,9 +171,9 @@ def calculate_diff_list(list1, list2):
 
     for list1_i, list2_i in zip_object:
         difference.append(list1_i - list2_i)
-    
+
     return difference
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     shard_allocator()
