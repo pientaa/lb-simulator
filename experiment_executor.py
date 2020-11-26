@@ -3,13 +3,17 @@ import os
 from generator.generator import generator
 from simulator.shard_allocator import shard_allocator
 from simulator.simulator import simulator
-
+import pandas as pd
+import matplotlib.pyplot as plt
 
 def experiment_executor():
     clear_directory()
     experiment = int(input("Which experiment?:"))
+    # experiment = 1
     while experiment not in [1, 2, 3]:
         experiment = int(input("Which experiment? (Enter number from 1 to 3):"))
+
+    # algorithms = "SALP"
 
     algorithms = str(input("Which allocation algorithm?:"))
     while algorithms not in ["random", "sequential", "SALP", "all"]:
@@ -21,6 +25,7 @@ def experiment_executor():
         algorithms = [algorithms]
 
     num_of_shards = int(input("Num of shards:"))
+    # num_of_shards = 300
     num_of_samples = 100
     period = 5.0
     parallel_requests = 5
@@ -36,21 +41,58 @@ def experiment_executor():
     for vector in load_vectors:
         save_load_vector(vector)
 
+    # DataFrame przechowujacy wyniki
+    delays_df = pd.DataFrame(columns = ['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
+
+
+
     for nodes in range(num_of_nodes, max_num_of_nodes, 1):
         for algorithm in algorithms:
             shard_allocation(num_of_shards, nodes, algorithm)
+            #TODO:
+            #Funkcja wyznaczająca poziom niezrównoważnia. Przyda się przerobić shard_allocator, który zwróci DataFrame z zalokowanymi shardami.
+            #Łatwiej będzie wtedy wyznaczyć poziomy niezrównoważenia, nie trzeba będzie na bazie csv'ek z load_vectorami grupować shardów i zliczać wektory obciązenia
+            #przypadające na węzeł
 
             requests_completed_df = simulation(parallel_requests, period, nodes, algorithm)
 
-            complete_processing_time = requests_completed_df.sort_values(by=["actual_end_time"]).tail(1)[
-                "actual_end_time"].item()
+            complete_processing_time = num_of_samples * period
 
-            delay = (requests_completed_df['delay'].sum() / complete_processing_time) * 100.0
+            #"odcięcie" requestów, które rozpoczęły się po oknie przetwarzania
+            requests_completed_df = requests_completed_df[requests_completed_df['timestamp'] < complete_processing_time]
 
-            print(requests_completed_df['delay'].sum())
-            print(complete_processing_time)
-            print(delay)
+            #iteracja po requestach, których czas zakończenia > okno czasowe
+            for index, row in requests_completed_df[requests_completed_df['actual_end_time'] > complete_processing_time].iterrows():
+                requests_completed_df.at[index, 'actual_end_time'] = complete_processing_time #zmiana czasu zakończenia requastu na czas okna przetwarzania
+                new_delay = complete_processing_time - requests_completed_df[requests_completed_df.index == index]['expected_end_time'].item() #Przeliczenie delay'a
 
+
+                #może się zdarzyć, że expected_time > okno przetwarzania
+                #wtedy delay = 0
+                if(new_delay >= 0):
+                    requests_completed_df.at[index, 'delay'] = new_delay
+                else:
+                    requests_completed_df.at[index, 'delay'] = 0
+                
+            #Wyznaczenie procentowego udziału delay w oknie przetwarzania
+            sum_of_delay = requests_completed_df['delay'].sum()
+            delay_percentage = (sum_of_delay / complete_processing_time) * 100.0
+
+            to_append = {'algorithm' : algorithm, 'nodes' : nodes, 'sum_of_delay' : sum_of_delay, 'delay_percentage' : delay_percentage}
+
+            delays_df = delays_df.append(to_append, ignore_index=True)
+    generate_delays_plots(delays_df)        
+
+def generate_delays_plots(delays_df):
+
+    #TODO:
+    #  Dopracować wykresy (kolory, labele, przeskalować osie itp itd.)
+    for group in delays_df['algorithm'].unique():
+        plt.plot(delays_df[delays_df['algorithm'] == group]['nodes'].tolist(),
+                delays_df[delays_df['algorithm'] == group]['delay_percentage'].tolist(),
+                label = group,
+                linewidth=2,)
+    plt.show()
 
 def simulation(parallel_requests, period, nodes, algorithm):
     requests_completed_df = simulator(parallel_requests, period)
