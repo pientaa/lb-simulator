@@ -1,11 +1,11 @@
+import math
+import sys
+from itertools import chain
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import sys
-import random
-import math
-import matplotlib.pyplot as plt
-import scipy.special as sps  
-from itertools import chain
+import scipy.special as sps
 
 period = 5.0
 
@@ -14,18 +14,22 @@ def generator(num_of_shards, num_of_samples, new_period, shape, scale):
     global period
     period = new_period
 
+    print("Generator started with following params:")
+    print("{ num_of_shards: " + str(num_of_shards) + ", num_of_samples: " + str(num_of_samples) +
+          ", period: " + str(period) + ", shape: " + str(shape) + ", scale: " + str(scale) + "  } \n")
+
     tasks = [int(round(number, 0)) for number in np.random.gamma(shape, scale, num_of_samples)]
 
     timestamps = [round(number, 3) for number in generate_time_stamps(tasks)]
 
-# We can parametrize this distribution in the future, too
+    # We can parametrize this distribution in the future, too
     loads = [round(number, 3) for number in np.random.gamma(2.0, 2.0, len(timestamps))]
 
     shards = np.random.randint(1, num_of_shards + 1, len(timestamps))
 
     requests = pd.DataFrame(list(zip(timestamps, shards, loads)), columns=['timestamp', 'shard', 'load'])
 
-# Test if correct number of requests generated
+    # Test if correct number of requests generated
     sum = 0
 
     for task in tasks:
@@ -33,14 +37,15 @@ def generator(num_of_shards, num_of_samples, new_period, shape, scale):
 
     assert len(requests) == sum
 
-# Plot density
+    # Plot density
     count, bins, ignored = plt.hist(tasks, 25, density=True)
-    y = bins**(shape-1)*(np.exp(-bins/scale) /  
-                     (sps.gamma(shape)*scale**shape))
-    plt.plot(bins, y, linewidth=2, color='r')  
-    plt.show()
+    y = bins ** (shape - 1) * (np.exp(-bins / scale) /
+                               (sps.gamma(shape) * scale ** shape))
+    plt.plot(bins, y, linewidth=2, color='r')
+    plt.savefig("tasks_hist.png")
 
     return requests, generate_load_vectors(requests, num_of_shards)
+
 
 def generate_time_stamps(tasks):
     timestamps = []
@@ -49,17 +54,20 @@ def generate_time_stamps(tasks):
         scaled_t = [round(float(number), 3) * period + float(period) * i for number in normalize_vector(random_t)]
         sorted_t = sorted(scaled_t, key=float)
         timestamps.append(sorted_t)
-    
+
     return flatten(timestamps)
+
 
 def normalize_vector(v):
     norm = np.linalg.norm(v)
-    if norm == 0: 
-       return v
+    if norm == 0:
+        return v
     return v / norm
+
 
 def flatten(listOfLists):
     return list(chain.from_iterable(listOfLists))
+
 
 def generate_load_vectors(requests, num_of_shards):
     load_vectors = []
@@ -69,9 +77,10 @@ def generate_load_vectors(requests, num_of_shards):
         load_vector = [0.0] * int(math.ceil(group['timestamp'].max() / period))
 
         for current_period_index in range(len(load_vector)):
-            current_requests = group[(group['timestamp'] >= period * current_period_index) & (group['timestamp'] < period * (current_period_index + 1))]
+            current_requests = group[(group['timestamp'] >= period * current_period_index) & (
+                    group['timestamp'] < period * (current_period_index + 1))]
 
-            if(not current_requests.empty):
+            if (not current_requests.empty):
                 for index, current_request in current_requests.iterrows():
                     load_vector = calculate_load_vector(current_request, current_period_index, load_vector)
 
@@ -83,8 +92,9 @@ def generate_load_vectors(requests, num_of_shards):
     for vector in load_vectors:
         while (len(vector) < max_vector_size):
             vector.append(0.0)
-    
+
     return load_vectors
+
 
 def calculate_load_vector(current_request, current_load_index, load_vector):
     start_time = float(current_request['timestamp'])
@@ -117,28 +127,30 @@ def calculate_load_vector(current_request, current_load_index, load_vector):
         first_period_load = (first_period_index + 1) * period - start_time
         num_of_full_periods = num_of_periods - 2
 
-        first_period_load = normalize(first_period_load)   
+        first_period_load = normalize(first_period_load)
 
         load_vector[current_load_index] = load_vector[current_load_index] + first_period_load
 
         for index in range(num_of_full_periods):
             current_index = first_period_index + index
-            if (len(load_vector) > current_index + 1):    
+            if (len(load_vector) > current_index + 1):
                 load_vector[current_index] = load_vector[current_index] + 1.0
             else:
                 load_vector.append(1.0)
-        
+
         last_period_load = normalize(current_load - first_period_load - num_of_full_periods)
 
-        if (len(load_vector) > last_period_index):                
+        if (len(load_vector) > last_period_index):
             load_vector[last_period_index] = load_vector[last_period_index] + last_period_load
         else:
             load_vector.append(last_period_load)
-        
+
     return [round(load, 3) for load in load_vector]
+
 
 def normalize(load):
     return round(load / float(period), 3)
+
 
 if __name__ == "__main__":
     generator(int(sys.argv[1]), int(sys.argv[2]), float(sys.argv[3]), float(sys.argv[4]), float(sys.argv[5]))
