@@ -73,12 +73,12 @@ def SALP_allocation():
 
     NWTS = WTS / num_of_nodes
 
-    NWTS_module = calculate_vector_module(NWTS)
+    NWTS_module = calculate_manhattan_vector_module(NWTS)
 
     modules_list = []
 
     for index, row in load_vectors_df.iterrows():
-        modules_list.append([calculate_vector_module(row), index + 1, row])
+        modules_list.append([calculate_manhattan_vector_module(row), index + 1, row])
 
     modules_sorted_df = pd.DataFrame(modules_list, columns=["module", "shard", "load_vector"]).sort_values('module',
                                                                                                            ascending=False)
@@ -112,7 +112,7 @@ def SALP_allocation():
 
         nodes_detail_df = nodes_detail_df.append(to_append, ignore_index=True)
 
-        if calculate_vector_module(nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()) > NWTS_module:
+        if calculate_manhattan_vector_module(nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()) > NWTS_module:
             list_inactive_nodes.append(node)
 
     shards_on_nodes = []
@@ -126,11 +126,11 @@ def SALP_allocation():
     return pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
 
 
-def calculate_vector_module(row):
+def calculate_manhattan_vector_module(row):
     sum = 0
     for current_value in range(len(row)):
-        sum = sum + row[current_value] ** 2
-    return math.sqrt(sum)
+        sum = sum + row[current_value]
+    return sum
 
 
 def calculate_node_for_shard(NWTS, WSJ_df, WJ, list_inactive_nodes):
@@ -147,8 +147,8 @@ def calculate_node_for_shard(NWTS, WSJ_df, WJ, list_inactive_nodes):
 
 
 def calculate_delta_j(NWTS, WSJ, WJ):
-    first_vector_module = calculate_vector_module(calculate_diff_list(WSJ, NWTS))
-    second_vector_module = calculate_vector_module(calculate_diff_list(calculate_sum_list(WSJ, WJ), NWTS))
+    first_vector_module = calculate_manhattan_vector_module(calculate_diff_list(WSJ, NWTS))
+    second_vector_module = calculate_manhattan_vector_module(calculate_diff_list(calculate_sum_list(WSJ, WJ), NWTS))
 
     return first_vector_module - second_vector_module
 
