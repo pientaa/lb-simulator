@@ -34,10 +34,14 @@ def shard_allocator(shards, nodes, algorithm_name):
 
 
 def random_allocation():
+    load_vectors_df = pd.read_csv("./generator/load_vectors.csv", header=None)
+    periods_in_vector = load_vectors_df.shape[1]
+
     shards_on_nodes = []
     current_node = 1
 
     shards_shuffled = np.random.choice(range(1, num_of_shards + 1), num_of_shards, replace=False)
+
 
     for i in range(len(shards_shuffled)):
         shard = shards_shuffled[i]
@@ -47,11 +51,36 @@ def random_allocation():
         if (i + 1) % int(num_of_shards / num_of_nodes) == 0:
             if current_node != num_of_nodes:
                 current_node += 1
+    
 
-    return pd.DataFrame(shards_on_nodes, columns=["shard", "node"]).sort_values('shard')
+    zeros_list = [0] * periods_in_vector
+    nodes_detail = []
+    for node in range(num_of_nodes):
+        nodes_detail.append([node + 1, [], zeros_list])
+
+    nodes_detail_df = pd.DataFrame(nodes_detail, columns=['node', 'shards', 'load_vector'])
+
+    for shard in shards_on_nodes:
+        shards_list = nodes_detail_df[nodes_detail_df.node == shard[1]]['shards'].item()
+        shards_list.append(shard[0])
+
+        load_node_vector = nodes_detail_df[nodes_detail_df.node == shard[1]]['load_vector'].item()
+        load_node_vector = calculate_sum_list(load_node_vector, load_vectors_df.loc[shard[0] - 1])
+        
+        to_append = {'node' : shard[1], 'shards' : shards_list, 'load_vector' : load_node_vector}
+        
+        row_index = nodes_detail_df[nodes_detail_df.node == shard[1]].index.item()
+        nodes_detail_df.drop([row_index], inplace=True)
+
+        nodes_detail_df = nodes_detail_df.append(to_append, ignore_index=True)
+
+    return nodes_detail_df
 
 
 def sequential_allocation():
+    load_vectors_df = pd.read_csv("./generator/load_vectors.csv", header=None)
+    periods_in_vector = load_vectors_df.shape[1]
+
     shards_on_nodes = []
     current_node = 1
 
@@ -63,7 +92,28 @@ def sequential_allocation():
             if current_node != num_of_nodes:
                 current_node += 1
 
-    return pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
+    zeros_list = [0] * periods_in_vector
+    nodes_detail = []
+    for node in range(num_of_nodes):
+        nodes_detail.append([node + 1, [], zeros_list])
+
+    nodes_detail_df = pd.DataFrame(nodes_detail, columns=['node', 'shards', 'load_vector'])
+
+    for shard in shards_on_nodes:
+        shards_list = nodes_detail_df[nodes_detail_df.node == shard[1]]['shards'].item()
+        shards_list.append(shard[0])
+
+        load_node_vector = nodes_detail_df[nodes_detail_df.node == shard[1]]['load_vector'].item()
+        load_node_vector = calculate_sum_list(load_node_vector, load_vectors_df.loc[shard[0] - 1])
+        
+        to_append = {'node' : shard[1], 'shards' : shards_list, 'load_vector' : load_node_vector}
+        
+        row_index = nodes_detail_df[nodes_detail_df.node == shard[1]].index.item()
+        nodes_detail_df.drop([row_index], inplace=True)
+
+        nodes_detail_df = nodes_detail_df.append(to_append, ignore_index=True)
+
+    return nodes_detail_df
 
 
 def SALP_allocation():
@@ -117,13 +167,7 @@ def SALP_allocation():
 
     shards_on_nodes = []
 
-    for index, row in nodes_detail_df.iterrows():
-        current_node = row["node"]
-
-        for shard in row["shards"]:
-            shards_on_nodes.append([shard, current_node])
-
-    return pd.DataFrame(shards_on_nodes, columns=["shard", "node"])
+    return nodes_detail_df
 
 
 def calculate_manhattan_vector_module(row):

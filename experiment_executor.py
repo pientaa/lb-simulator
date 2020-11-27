@@ -103,9 +103,19 @@ def simulation(parallel_requests, period, nodes, algorithm):
 
 def shard_allocation(num_of_shards, nodes, algorithm):
     shard_allocated_df = shard_allocator(num_of_shards, nodes, algorithm)
-    shard_allocated_df.to_csv('./experiments/' + algorithm + '/shard_allocated_' + str(nodes) + '.csv', index=False)
-    shard_allocated_df.to_csv('./simulator/shard_allocated.csv', index=False)
 
+    shards_allocated = []
+    for index, row in shard_allocated_df.iterrows():
+        node = row['node']
+        for shard in row['shards']:
+            shards_allocated.append([node, shard])
+
+    shards_allocated_to_csv = pd.DataFrame(shards_allocated, columns = ['node', 'shard'])
+
+    shards_allocated_to_csv.to_csv('./experiments/' + algorithm + '/shard_allocated_' + str(nodes) + '.csv', index=False)
+    shards_allocated_to_csv.to_csv('./simulator/shard_allocated.csv', index=False)
+
+    return shard_allocated_df
 
 def save_load_vector(load_vector):
     load_vector_file = open("./experiments/load_vectors.csv", "a")
