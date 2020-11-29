@@ -1,4 +1,3 @@
-import math
 import sys
 
 import numpy as np
@@ -42,7 +41,6 @@ def random_allocation():
 
     shards_shuffled = np.random.choice(range(1, num_of_shards + 1), num_of_shards, replace=False)
 
-
     for i in range(len(shards_shuffled)):
         shard = shards_shuffled[i]
 
@@ -51,24 +49,24 @@ def random_allocation():
         if (i + 1) % int(num_of_shards / num_of_nodes) == 0:
             if current_node != num_of_nodes:
                 current_node += 1
-    
 
-    zeros_list = [0] * periods_in_vector
+    empty_load_vector = [0] * periods_in_vector
     nodes_detail = []
     for node in range(num_of_nodes):
-        nodes_detail.append([node + 1, [], zeros_list])
+        nodes_detail.append([node + 1, [], empty_load_vector])
 
     nodes_detail_df = pd.DataFrame(nodes_detail, columns=['node', 'shards', 'load_vector'])
 
     for shard in shards_on_nodes:
-        shards_list = nodes_detail_df[nodes_detail_df.node == shard[1]]['shards'].item()
-        shards_list.append(shard[0])
+        current_node = shard[1]
+        shards = nodes_detail_df[nodes_detail_df.node == current_node]['shards'].item()
+        shards.append(shard[0])
 
-        load_node_vector = nodes_detail_df[nodes_detail_df.node == shard[1]]['load_vector'].item()
-        load_node_vector = calculate_sum_list(load_node_vector, load_vectors_df.loc[shard[0] - 1])
-        
-        to_append = {'node' : shard[1], 'shards' : shards_list, 'load_vector' : load_node_vector}
-        
+        node_load_vector = nodes_detail_df[nodes_detail_df.node == current_node]['load_vector'].item()
+        node_load_vector = sum_list(node_load_vector, load_vectors_df.loc[shard[0] - 1])
+
+        to_append = {'node': shard[1], 'shards': shards, 'load_vector': node_load_vector}
+
         row_index = nodes_detail_df[nodes_detail_df.node == shard[1]].index.item()
         nodes_detail_df.drop([row_index], inplace=True)
 
@@ -104,10 +102,10 @@ def sequential_allocation():
         shards_list.append(shard[0])
 
         load_node_vector = nodes_detail_df[nodes_detail_df.node == shard[1]]['load_vector'].item()
-        load_node_vector = calculate_sum_list(load_node_vector, load_vectors_df.loc[shard[0] - 1])
-        
-        to_append = {'node' : shard[1], 'shards' : shards_list, 'load_vector' : load_node_vector}
-        
+        load_node_vector = sum_list(load_node_vector, load_vectors_df.loc[shard[0] - 1])
+
+        to_append = {'node': shard[1], 'shards': shards_list, 'load_vector': load_node_vector}
+
         row_index = nodes_detail_df[nodes_detail_df.node == shard[1]].index.item()
         nodes_detail_df.drop([row_index], inplace=True)
 
@@ -151,8 +149,8 @@ def SALP_allocation():
         shards_list.append(shard)
 
         node_load = nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()
-        node_load = calculate_sum_list(node_load,
-                                       modules_sorted_df[modules_sorted_df.shard == shard]['load_vector'].item())
+        node_load = sum_list(node_load,
+                             modules_sorted_df[modules_sorted_df.shard == shard]['load_vector'].item())
 
         row_index = nodes_detail_df[nodes_detail_df.node == node].index.item()
 
@@ -162,10 +160,9 @@ def SALP_allocation():
 
         nodes_detail_df = nodes_detail_df.append(to_append, ignore_index=True)
 
-        if calculate_manhattan_vector_module(nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()) > NWTS_module:
+        if calculate_manhattan_vector_module(
+                nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()) > NWTS_module:
             list_inactive_nodes.append(node)
-
-    shards_on_nodes = []
 
     return nodes_detail_df
 
@@ -191,13 +188,13 @@ def calculate_node_for_shard(NWTS, WSJ_df, WJ, list_inactive_nodes):
 
 
 def calculate_delta_j(NWTS, WSJ, WJ):
-    first_vector_module = calculate_manhattan_vector_module(calculate_diff_list(WSJ, NWTS))
-    second_vector_module = calculate_manhattan_vector_module(calculate_diff_list(calculate_sum_list(WSJ, WJ), NWTS))
+    first_vector_module = calculate_manhattan_vector_module(diff_list(WSJ, NWTS))
+    second_vector_module = calculate_manhattan_vector_module(diff_list(sum_list(WSJ, WJ), NWTS))
 
     return first_vector_module - second_vector_module
 
 
-def calculate_sum_list(list1, list2):
+def sum_list(list1, list2):
     sum = []
 
     zip_object = zip(list1, list2)
@@ -208,7 +205,7 @@ def calculate_sum_list(list1, list2):
     return sum
 
 
-def calculate_diff_list(list1, list2):
+def diff_list(list1, list2):
     difference = []
 
     zip_object = zip(list1, list2)

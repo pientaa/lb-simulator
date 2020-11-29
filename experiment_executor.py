@@ -1,22 +1,22 @@
 import os
 
+import matplotlib.pyplot as plt
+import pandas as pd
+
 from generator.generator import generator
+from simulator.shard_allocator import calculate_manhattan_vector_module
+from simulator.shard_allocator import diff_list
 from simulator.shard_allocator import shard_allocator
 from simulator.simulator import simulator
-from simulator.shard_allocator import calculate_manhattan_vector_module
-from simulator.shard_allocator import calculate_diff_list
-from simulator.shard_allocator import calculate_sum_list
-import pandas as pd
-import matplotlib.pyplot as plt
+
+num_of_shards = 0
+
 
 def experiment_executor():
     clear_directory()
     experiment = int(input("Which experiment?:"))
-    # experiment = 1
     while experiment not in [1, 2, 3]:
         experiment = int(input("Which experiment? (Enter number from 1 to 3):"))
-
-    # algorithms = "SALP"
 
     algorithms = str(input("Which allocation algorithm?:"))
     while algorithms not in ["random", "sequential", "SALP", "all"]:
@@ -27,8 +27,8 @@ def experiment_executor():
     else:
         algorithms = [algorithms]
 
+    global num_of_shards
     num_of_shards = int(input("Num of shards:"))
-    # num_of_shards = 300
     num_of_samples = 100
     period = 5.0
     parallel_requests = 5
@@ -44,93 +44,91 @@ def experiment_executor():
     for vector in load_vectors:
         save_load_vector(vector)
 
-    # DataFrame przechowujacy wyniki opoznien
-    delays_df = pd.DataFrame(columns = ['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
+    delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
 
-    # DataFrame przechowujacy wyniki poziomu niezrownowazenia
-    imbalance_lvl = pd.DataFrame(columns = ['algorithm', 'nodes', 'sum_of_imbalance' ,'imbalance_percentage'])
+    imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_imbalance', 'imbalance_percentage'])
 
     for nodes in range(num_of_nodes, max_num_of_nodes, 1):
         for algorithm in algorithms:
-            nodes_detail_df = shard_allocation(num_of_shards, nodes, algorithm)
-            #TODO:
-            #Funkcja wyznaczająca poziom niezrównoważnia. Przyda się przerobić shard_allocator, który zwróci DataFrame z zalokowanymi shardami.
-            #Łatwiej będzie wtedy wyznaczyć poziomy niezrównoważenia, nie trzeba będzie na bazie csv'ek z load_vectorami grupować shardów i zliczać wektory obciązenia
-            #przypadające na węzeł
-            imbalance_lvl = imbalance_lvl.append(calculate_imbalance_level(algorithm, nodes, load_vectors, nodes_detail_df), ignore_index=True)
+            nodes_detail_df = shard_allocation(nodes, algorithm)
+            imbalance_df = imbalance_df.append(calculate_imbalance_level(algorithm, nodes, load_vectors, nodes_detail_df), ignore_index=True)
 
             requests_completed_df = simulation(parallel_requests, period, nodes, algorithm)
 
             delays_df = delays_df.append(calculate_delays(num_of_samples, period, algorithm, nodes, requests_completed_df), ignore_index=True)
 
-    generate_delays_plots(delays_df)        
-    generate_imbalance_plots(imbalance_lvl)
+            generate_delays_plots(delays_df)
+            generate_imbalance_plots(imbalance_df)
+
 
 def calculate_delays(num_of_samples, period, algorithm, nodes, requests_completed_df):
     complete_processing_time = num_of_samples * period
 
-    #"odcięcie" requestów, które rozpoczęły się po oknie przetwarzania
-    requests_completed_df = requests_completed_df[requests_completed_df['timestamp'] < complete_processing_time]
+    ignored_requests = requests_completed_df[requests_completed_df['timestamp'] >= complete_processing_time]
+    observed_requests = requests_completed_df[requests_completed_df['timestamp'] < complete_processing_time]
 
-    #iteracja po requestach, których czas zakończenia > okno czasowe
-    for index, row in requests_completed_df[requests_completed_df['actual_end_time'] > complete_processing_time].iterrows():
-        requests_completed_df.at[index, 'actual_end_time'] = complete_processing_time #zmiana czasu zakończenia requastu na czas okna przetwarzania
-        new_delay = complete_processing_time - requests_completed_df[requests_completed_df.index == index]['expected_end_time'].item() #Przeliczenie delay'a
+    for index, row in observed_requests[observed_requests['actual_end_time'] > complete_processing_time].iterrows():
+        observed_requests.at[index, 'actual_end_time'] = complete_processing_time
+        new_delay = complete_processing_time - observed_requests[observed_requests.index == index]['expected_end_time'].item()
 
-
-        #może się zdarzyć, że expected_time > okno przetwarzania
-        #wtedy delay = 0
-        if(new_delay >= 0):
-            requests_completed_df.at[index, 'delay'] = new_delay
+        if new_delay >= 0:
+            observed_requests.at[index, 'delay'] = new_delay
         else:
-            requests_completed_df.at[index, 'delay'] = 0
-                
-        #Wyznaczenie procentowego udziału delay w oknie przetwarzania
-        sum_of_delay = requests_completed_df['delay'].sum()
-        delay_percentage = (sum_of_delay / complete_processing_time) * 100.0
+            observed_requests.at[index, 'delay'] = 0
 
-    to_append = {'algorithm' : algorithm, 'nodes' : nodes, 'sum_of_delay' : sum_of_delay, 'delay_percentage' : delay_percentage}
+        total_delay = observed_requests['delay'].sum()
+        percentage_delay = (total_delay / complete_processing_time) * 100.0
+
+    to_append = {'algorithm': algorithm, 'nodes': nodes, 'sum_of_delay': total_delay,
+                 'delay_percentage': percentage_delay}
 
     return to_append
 
+
 def calculate_imbalance_level(algorithm, nodes, load_vectors, nodes_detail_df):
-    
     load_vectors_df = pd.DataFrame(load_vectors)
-    periods_in_vector = load_vectors_df.shape[1]
     WTS = load_vectors_df.sum(axis=0)
     NWTS = WTS / nodes
     NWTS_module = calculate_manhattan_vector_module(NWTS)
-    
+
     sum_imbalance = 0
     for index, row in nodes_detail_df.iterrows():
-        # print(calculate_diff_list(row['load_vector'],  NWTS))
-        sum_imbalance = sum_imbalance + abs(calculate_manhattan_vector_module(calculate_diff_list(row['load_vector'],  NWTS)))
+        sum_imbalance = sum_imbalance + abs(
+            calculate_manhattan_vector_module(diff_list(row['load_vector'], NWTS)))
     imb_lvl = (sum_imbalance / NWTS_module) * 100.0
-    
-    to_append = {'algorithm' : algorithm, 'nodes' : nodes, 'sum_of_imbalance' : sum_imbalance, 'imbalance_percentage' : imb_lvl}
-    
+
+    to_append = {'algorithm': algorithm, 'nodes': nodes, 'sum_of_imbalance': sum_imbalance,
+                 'imbalance_percentage': imb_lvl}
+
     return to_append
 
+
 def generate_imbalance_plots(imbalance_lvl):
-
-    #TODO:
-    #  Dopracować wykresy (kolory, labele, przeskalować osie itp itd.)
+    plt.clf()
     for group in imbalance_lvl['algorithm'].unique():
-        plt.plot(imbalance_lvl[imbalance_lvl['algorithm'] == group]['nodes'].tolist(),
-                imbalance_lvl[imbalance_lvl['algorithm'] == group]['imbalance_percentage'].tolist(),
-                label = group,
-                linewidth = 2)
-    plt.show()
-def generate_delays_plots(delays_df):
+        plt.plot(imbalance_lvl[imbalance_lvl['algorithm'] == group]['nodes'].map(lambda x: num_of_shards/x).tolist(),
+                 imbalance_lvl[imbalance_lvl['algorithm'] == group]['imbalance_percentage'].tolist(),
+                 label=group,
+                 linewidth=2)
+    plt.legend(loc="upper right")
+    plt.xlabel("Shards per node ratio")
+    plt.ylabel("Percentage value of imbalance")
+    plt.savefig("imbalance.png")
 
-    #TODO:
-    #  Dopracować wykresy (kolory, labele, przeskalować osie itp itd.)
+
+def generate_delays_plots(delays_df):
+    plt.clf()
     for group in delays_df['algorithm'].unique():
-        plt.plot(delays_df[delays_df['algorithm'] == group]['nodes'].tolist(),
-                delays_df[delays_df['algorithm'] == group]['delay_percentage'].tolist(),
-                label = group,
-                linewidth=2)
-    plt.show()
+        print(group)
+        plt.plot(delays_df[delays_df['algorithm'] == group]['nodes'].map(lambda x: num_of_shards/x).tolist(),
+                 delays_df[delays_df['algorithm'] == group]['delay_percentage'].tolist(),
+                 label=group,
+                 linewidth=2)
+    plt.legend(loc="upper right")
+    plt.xlabel("Shards per node ratio")
+    plt.ylabel("Percentage value of total delay")
+    plt.savefig("delays.png")
+
 
 def simulation(parallel_requests, period, nodes, algorithm):
     requests_completed_df = simulator(parallel_requests, period)
@@ -139,7 +137,7 @@ def simulation(parallel_requests, period, nodes, algorithm):
     return requests_completed_df
 
 
-def shard_allocation(num_of_shards, nodes, algorithm):
+def shard_allocation(nodes, algorithm):
     shard_allocated_df = shard_allocator(num_of_shards, nodes, algorithm)
 
     shards_allocated = []
@@ -148,12 +146,14 @@ def shard_allocation(num_of_shards, nodes, algorithm):
         for shard in row['shards']:
             shards_allocated.append([node, shard])
 
-    shards_allocated_to_csv = pd.DataFrame(shards_allocated, columns = ['node', 'shard'])
+    shards_allocated_to_csv = pd.DataFrame(shards_allocated, columns=['node', 'shard'])
 
-    shards_allocated_to_csv.to_csv('./experiments/' + algorithm + '/shard_allocated_' + str(nodes) + '.csv', index=False)
+    shards_allocated_to_csv.to_csv('./experiments/' + algorithm + '/shard_allocated_' + str(nodes) + '.csv',
+                                   index=False)
     shards_allocated_to_csv.to_csv('./simulator/shard_allocated.csv', index=False)
 
     return shard_allocated_df
+
 
 def save_load_vector(load_vector):
     load_vector_file = open("./experiments/load_vectors.csv", "a")
