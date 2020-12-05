@@ -39,6 +39,7 @@ def random_allocation():
     shards_on_nodes = []
     current_node = 1
 
+    np.random.seed(10)
     shards_shuffled = np.random.choice(range(1, num_of_shards + 1), num_of_shards, replace=False)
 
     for i in range(len(shards_shuffled)):
