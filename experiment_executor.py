@@ -50,7 +50,7 @@ def experiment_executor():
     if(experiment == 1):
         experiment_one(num_of_samples, period, num_of_nodes, algorithms, shape, scale, load_vectors)
     elif(experiment == 2):
-        experiment_two(num_of_samples, period, algorithms, shape, scale, num_of_nodes, parallel_requests, max_shape)
+        experiment_two(num_of_samples, period, algorithms, num_of_nodes, parallel_requests)
     elif(experiment == 3):
         experiment_three(algorithms, parallel_requests, period, num_of_samples, shape, scale, load_vectors)
     else:
@@ -95,7 +95,7 @@ def experiment_one(num_of_samples, period, num_of_nodes, algorithms, shape, scal
     generate_delays_plots(delays_df, "cloud_load", "Cloud load level", "delays_cload_load", processing_time, periods_in_vector, num_of_nodes)
     generate_imbalance_plots(imbalance_df, "cloud_load", "Cloud load level", "imbalance_lvl_cload_load", processing_time, periods_in_vector, num_of_nodes)
 
-def experiment_two(num_of_samples, period, algorithms, shape, scale, nodes, parallel_requests, max_shape):
+def experiment_two(num_of_samples, period, algorithms, nodes, parallel_requests):
     shape = 100.0 / 9.0
     scale = 1
 
