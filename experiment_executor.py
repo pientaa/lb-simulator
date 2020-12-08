@@ -34,24 +34,19 @@ def experiment_executor():
     num_of_samples = 100
     period = 5.0
     shape = 2.0
-    max_shape = int(shape * 5)
     scale = num_of_shards / 16.0
     parallel_requests = 5
-    max_parallel_requests = 4 * parallel_requests
-
     num_of_nodes = round(num_of_shards / 25)
-    max_num_of_nodes = round(num_of_shards / 17) + 1
 
     clear_directory()
-    
-    requests, load_vectors = generate_load_vectors(num_of_shards, num_of_samples, period, shape, scale)
-
 
     if(experiment == 1):
+        requests, load_vectors = generate_load_vectors(num_of_shards, num_of_samples, period, shape, scale)
         experiment_one(num_of_samples, period, num_of_nodes, algorithms, shape, scale, load_vectors)
     elif(experiment == 2):
         experiment_two(num_of_samples, period, algorithms, num_of_nodes, parallel_requests)
     elif(experiment == 3):
+        requests, load_vectors = generate_load_vectors(num_of_shards, num_of_samples, period, shape, scale)
         experiment_three(algorithms, parallel_requests, period, num_of_samples, shape, scale, load_vectors)
     else:
         print("Wrong experiment!")
@@ -96,8 +91,8 @@ def experiment_one(num_of_samples, period, num_of_nodes, algorithms, shape, scal
     generate_imbalance_plots(imbalance_df, "cloud_load", "Cloud load level", "imbalance_lvl_cload_load", processing_time, periods_in_vector, num_of_nodes)
 
 def experiment_two(num_of_samples, period, algorithms, nodes, parallel_requests):
-    shape = 100.0 / 9.0
-    scale = 1
+    shape = 25.0
+    scale = 2.0
 
     mean = shape * scale
 
@@ -105,10 +100,10 @@ def experiment_two(num_of_samples, period, algorithms, nodes, parallel_requests)
 
     imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'load_ratio', 'sum_of_imbalance', 'imbalance_percentage'])
 
-    for alfa in np.arange(0.1, shape, 0.5):
+    for alfa in np.arange(1.0, shape, 1.0):
         alfa = round(alfa, 1)
-
         beta = mean / alfa
+
         clear_directory()
         requests, load_vectors = generate_load_vectors(num_of_shards, num_of_samples, period, alfa, beta)
 
