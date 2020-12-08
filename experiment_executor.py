@@ -40,13 +40,13 @@ def experiment_executor():
 
     clear_directory()
 
+    requests, load_vectors = generate_load_vectors(num_of_shards, num_of_samples, period, shape, scale)
+
     if(experiment == 1):
-        requests, load_vectors = generate_load_vectors(num_of_shards, num_of_samples, period, shape, scale)
         experiment_one(num_of_samples, period, num_of_nodes, algorithms, shape, scale, load_vectors)
     elif(experiment == 2):
         experiment_two(num_of_samples, period, algorithms, num_of_nodes, parallel_requests)
     elif(experiment == 3):
-        requests, load_vectors = generate_load_vectors(num_of_shards, num_of_samples, period, shape, scale)
         experiment_three(algorithms, parallel_requests, period, num_of_samples, shape, scale, load_vectors)
     else:
         print("Wrong experiment!")
