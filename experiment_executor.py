@@ -75,7 +75,7 @@ def experiment_one(num_of_samples, period, num_of_nodes, algorithms, shape, scal
 
     min_parallel_requests = round(processing_time / (periods_in_vector * num_of_nodes * 0.9))
     max_parallel_requests = round(processing_time / (periods_in_vector * num_of_nodes * 0.1))
-
+    
     delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'cload_load_lvl', 'sum_of_delay', 'delay_percentage'])
     imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'cload_load_lvl', 'sum_of_imbalance', 'imbalance_percentage'])
 
@@ -220,6 +220,13 @@ def calculate_imbalance_level(algorithm, nodes, load_vectors, nodes_detail_df, s
 
 def generate_imbalance_plots(imbalance_lvl, param_x, xLabel, plotTitle):
     plt.clf()
+    if(param_x == "cloud_load"):
+        path = "experiments/experiment_1"
+    elif(param_x == "load_ratio"):
+        path = "experiments/experiment_2"
+    elif(param_x == "shards_per_node"):
+        path = "experiments/experiment_3"
+    
     for group in imbalance_lvl['algorithm'].unique():
         if(param_x == "cloud_load"):
             x = imbalance_lvl[imbalance_lvl['algorithm'] == group]['cload_load_lvl'].tolist()
@@ -231,13 +238,22 @@ def generate_imbalance_plots(imbalance_lvl, param_x, xLabel, plotTitle):
                  imbalance_lvl[imbalance_lvl['algorithm'] == group]['imbalance_percentage'].tolist(),
                  label=group,
                  linewidth=2)
+    path = path + "/" + plotTitle + "_" + getCurrentDateTime()
     plt.legend(loc="upper right")
     plt.xlabel(xLabel)
     plt.ylabel("Percentage value of imbalance")
-    plt.savefig(plotTitle + ".png")
+    plt.savefig(path + ".png")
 
 def generate_delays_plots(delays_df, param_x, xLabel, plotTitle):
     plt.clf()
+
+    if(param_x == "cloud_load"):
+        path = "experiments/experiment_1"
+    elif(param_x == "load_ratio"):
+        path = "experiments/experiment_2"
+    elif(param_x == "shards_per_node"):
+        path = "experiments/experiment_3"
+
     for group in delays_df['algorithm'].unique():
         if(param_x == "cloud_load"):
             x = delays_df[delays_df['algorithm'] == group]['cload_load_lvl'].tolist()
@@ -249,10 +265,11 @@ def generate_delays_plots(delays_df, param_x, xLabel, plotTitle):
                  delays_df[delays_df['algorithm'] == group]['delay_percentage'].tolist(),
                  label=group,
                  linewidth=2)
+    path = path + "/" + plotTitle + "_" + getCurrentDateTime()
     plt.legend(loc="upper right")
     plt.xlabel(xLabel)
     plt.ylabel("Percentage value of total delay")
-    plt.savefig(plotTitle + ".png")
+    plt.savefig(path + ".png")
 
 
 def simulation(parallel_requests, period, nodes, algorithm):
