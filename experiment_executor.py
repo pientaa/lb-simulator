@@ -1,4 +1,5 @@
 import os
+import shutil
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -16,7 +17,6 @@ num_of_shards = 0
 
 
 def experiment_executor():
-    clear_directory()
     experiment = str(input("Which experiment?:"))
     while experiment not in ['1', '2', '3', 'all']:
         experiment = str(input("Which experiment? (Enter number from 1 to 3):"))
@@ -294,12 +294,27 @@ def save_load_vector(load_vector):
 
 def clear_directory():
     try:
-        os.remove("experiments/load_vectors.csv")
-        os.remove("generator/load_vectors.csv")
+        if(os.path.exists("generator/load_vectors.csv") == True):
+            os.unlink("generator/load_vectors.csv")
+        if(os.path.exists("experiments/load_vectors.csv") == True ):
+            os.unlink("experiments/load_vectors.csv")
     except OSError:
-        os.system("rm -f ./experiments/load_vectors.csv")
-        os.system("rm -f ./generator/load_vectors.csv")
+        if(os.path.exists("./generator/load_vectors.csv") == True):
+            os.system("rm -f ./generator/load_vectors.csv")
+        if(os.path.exists("./experiments/load_vectors.csv") == True):
+            os.system("rm -f ./experiments/load_vectors.csv")
 
+
+def reset_directory():
+    if(os.path.exists("experiments") == True):
+        shutil.rmtree("experiments")
+    os.mkdir("experiments")
+    os.mkdir("experiments/experiment_1")
+    os.mkdir("experiments/experiment_2")
+    os.mkdir("experiments/experiment_3")
+    os.mkdir("experiments/SALP")
+    os.mkdir("experiments/random")
+    os.mkdir("experiments/sequential")
 
 def getCurrentDateTime():
     currentDateTime = datetime.now()
@@ -309,4 +324,5 @@ def getCurrentDateTime():
            str(currentDateTime.minute)
 
 if __name__ == "__main__":
+    reset_directory()
     experiment_executor()
