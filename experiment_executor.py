@@ -92,8 +92,8 @@ def experiment_one(num_of_samples, period, num_of_nodes, algorithms, shape, scal
             delays_df = delays_df.append(calculate_delays(num_of_samples, period, algorithm, num_of_nodes, requests_completed_df,
                                         cload_load_lvl = cload_load_lvl), ignore_index=True)
     
-    delays_df.to_csv('./experiments/experiment_1/delays_' + getCurrentDateTime() + '.csv', index=False)
-    imbalance_df.to_csv('./experiments/experiment_1/imbalance_' + getCurrentDateTime() + '.csv', index = False)
+    delays_df.to_csv('./results/experiment_1/delays_' + getCurrentDateTime() + '.csv', index=False)
+    imbalance_df.to_csv('./results/experiment_1/imbalance_' + getCurrentDateTime() + '.csv', index = False)
 
     generate_delays_plots(delays_df, "cloud_load", "Cloud load level", "delays_cload_load")
     generate_imbalance_plots(imbalance_df, "cloud_load", "Cloud load level", "imbalance_lvl_cload_load")
@@ -126,8 +126,8 @@ def experiment_two(num_of_samples, period, algorithms, nodes, parallel_requests)
             delays_df = delays_df.append(calculate_delays(num_of_samples, period, algorithm, nodes, requests_completed_df,
                                         load_ratio = load_ratio), ignore_index=True)
 
-    delays_df.to_csv('./experiments/experiment_2/delays_' + getCurrentDateTime() + '.csv', index=False)
-    imbalance_df.to_csv('./experiments/experiment_2/imbalance_' + getCurrentDateTime() + '.csv', index = False)
+    delays_df.to_csv('./results/experiment_2/delays_' + getCurrentDateTime() + '.csv', index=False)
+    imbalance_df.to_csv('./results/experiment_2/imbalance_' + getCurrentDateTime() + '.csv', index = False)
 
     generate_delays_plots(delays_df, "load_ratio", "Load Ratio", "delays_load_ratio")
     generate_imbalance_plots(imbalance_df, "load_ratio", "Load Ratio", "imbalance_lvl_load_ratio")
@@ -155,8 +155,8 @@ def experiment_three(algorithms, parallel_requests, period, num_of_samples, shap
             delays_df = delays_df.append(calculate_delays(num_of_samples, period, algorithm, nodes, requests_completed_df,
                                         shards_per_node_ratio = shards_per_node_ratio),ignore_index=True)
 
-    delays_df.to_csv('./experiments/experiment_3/delays_' + getCurrentDateTime() + '.csv', index=False)
-    imbalance_df.to_csv('./experiments/experiment_3/imbalance_' + getCurrentDateTime() + '.csv', index = False)
+    delays_df.to_csv('./results/experiment_3/delays_' + getCurrentDateTime() + '.csv', index=False)
+    imbalance_df.to_csv('./results/experiment_3/imbalance_' + getCurrentDateTime() + '.csv', index = False)
 
     generate_delays_plots(delays_df, "shards_per_node", "Shards per node ratio", "delays_shards_per_node")
     generate_imbalance_plots(imbalance_df, "shards_per_node", "Shards per node ratio", "imbalance_lvl_shards_per_node")
@@ -221,11 +221,11 @@ def calculate_imbalance_level(algorithm, nodes, load_vectors, nodes_detail_df, s
 def generate_imbalance_plots(imbalance_lvl, param_x, xLabel, plotTitle):
     plt.clf()
     if(param_x == "cloud_load"):
-        path = "experiments/experiment_1"
+        path = "results/experiment_1"
     elif(param_x == "load_ratio"):
-        path = "experiments/experiment_2"
+        path = "results/experiment_2"
     elif(param_x == "shards_per_node"):
-        path = "experiments/experiment_3"
+        path = "results/experiment_3"
     
     for group in imbalance_lvl['algorithm'].unique():
         if(param_x == "cloud_load"):
@@ -248,11 +248,11 @@ def generate_delays_plots(delays_df, param_x, xLabel, plotTitle):
     plt.clf()
 
     if(param_x == "cloud_load"):
-        path = "experiments/experiment_1"
+        path = "results/experiment_1"
     elif(param_x == "load_ratio"):
-        path = "experiments/experiment_2"
+        path = "results/experiment_2"
     elif(param_x == "shards_per_node"):
-        path = "experiments/experiment_3"
+        path = "results/experiment_3"
 
     for group in delays_df['algorithm'].unique():
         if(param_x == "cloud_load"):
@@ -326,9 +326,6 @@ def reset_directory():
     if(os.path.exists("experiments") == True):
         shutil.rmtree("experiments")
     os.mkdir("experiments")
-    os.mkdir("experiments/experiment_1")
-    os.mkdir("experiments/experiment_2")
-    os.mkdir("experiments/experiment_3")
     os.mkdir("experiments/SALP")
     os.mkdir("experiments/random")
     os.mkdir("experiments/sequential")

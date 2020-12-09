@@ -1,6 +1,7 @@
 .vscode
 .idea
 experiments
+results
 venv
 
 *.code-workspace
