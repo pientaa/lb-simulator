@@ -1,10 +1,11 @@
 .vscode
 .idea
 experiments
+results
 venv
 
 *.code-workspace
 
 *.csv
 .history/
-/experiments/SALP/
+
