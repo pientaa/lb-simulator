@@ -27,8 +27,8 @@ class ExperimentExecutor:
         self.scale = 0
         self.parallel_requests = 5
         self.num_of_nodes = 0
-        self.experiments = ['1', '2', '3']
-        self.algorithms = ["random", "sequential", "SALP"]
+        self.experiments = []
+        self.algorithms = []
         self.load_vectors = []
         self.shard_on_nodes = pd.DataFrame(columns=["shard", "node"])
         self.requests_completed = pd.DataFrame()
@@ -116,16 +116,13 @@ class ExperimentExecutor:
         return self
 
     def run_experiments(self):
-        print(self.experiments)
         for experiment in self.experiments:
-            self.experiment_runner().get(experiment)
-
-    def experiment_runner(self):
-        return {
-            '1': self.experiment_one(),
-            '2': self.experiment_two(),
-            '3': self.experiment_three()
-        }
+            if experiment == '1':
+                self.experiment_one()
+            if experiment == '2':
+                self.experiment_two()
+            if experiment == '3':
+                self.experiment_three()
 
     def experiment_one(self):
         self.clear()

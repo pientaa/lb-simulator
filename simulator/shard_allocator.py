@@ -119,6 +119,8 @@ def SALP_allocation():
                 nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()) > NWTS_module:
             list_inactive_nodes.append(node)
 
+        print(nodes_detail_df)
+
     return nodes_detail_df[['shard', 'node']]
 
 
