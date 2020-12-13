@@ -13,7 +13,6 @@ from simulator.shard_allocator import diff_list
 from simulator.shard_allocator import shard_allocator
 from simulator.simulator import simulator
 
-num_of_shards = 0
 CLOUD_LOAD_LEVEL = "cloud_load_lvl"
 LOAD_RATIO = "load_ratio"
 SHARDS_PER_NODE_RATIO = "shards_per_node_ratio"
@@ -28,21 +27,63 @@ class ExperimentExecutor:
         self.scale = 0
         self.parallel_requests = 5
         self.num_of_nodes = 0
-        self.experiments = [1, 2, 3]
+        self.experiments = ['1', '2', '3']
         self.algorithms = ["random", "sequential", "SALP"]
         self.load_vectors = []
 
-    def manualConfig(self):
-        self.experiments = [int(input("Which experiment?:"))]
-        self.algorithms = [str(input("Which allocation algorithm? (random/sequential/SALP):"))]
+    def print(self):
+        print("Shards: " + str(self.num_of_shards))
+        print("Nodes: " + str(self.num_of_nodes))
+        print("Period: " + str(self.period))
+        print("Shape: " + str(self.shape))
+
+    def manual_config(self):
+        experiment = str(input("Which experiment?:"))
+        if experiment == "all":
+            experiment = ["1", "2", "3"]
+        else:
+            experiment = [experiment]
+        self.experiments = experiment
+
+        algorithm = str(input("Which allocation algorithm? (random/sequential/SALP):"))
+
+        if algorithm == "all":
+            algorithm = ["random", "sequential", "SALP"]
+        else:
+            algorithm = [algorithm]
+        self.algorithms = algorithm
+
+        self.num_of_shards = int(input("Num of shards:"))
+        self.num_of_samples = 100
+        self.period = 5.0
+        self.shape = 2.0
+        self.scale = self.num_of_shards / 16.0
+        self.parallel_requests = 5
+        self.num_of_nodes = 1
+
+        return self
 
     def add_load_vectors(self, load_vectors):
         self.load_vectors = load_vectors
+        return self
+
+    def run_experiments(self):
+        for experiment in self.experiments:
+            print(experiment)
+            self.experiment_runner().get(experiment)
+
+    def experiment_runner(self):
+        return {
+            '1': self.experiment_one()
+        }
 
     def experiment_one(self):
         load_vectors_df = pd.DataFrame(self.load_vectors)
         processing_time = sum(load_vectors_df.sum(axis=1))
         periods_in_vector = load_vectors_df.shape[1]
+
+        print(periods_in_vector)
+        print(self.num_of_nodes)
 
         min_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.9))
         max_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.1))
@@ -54,8 +95,8 @@ class ExperimentExecutor:
             for algorithm in self.algorithms:
                 cloud_load_lvl = processing_time / (periods_in_vector * self.num_of_nodes * parallel_requests)
 
-                nodes_detail_df = shard_allocation(self.num_of_nodes, algorithm)
-                imbalance_df = imbalance_df.append(calculate_imbalance_level(algorithm, self.num_of_nodes, load_vectors, nodes_detail_df,
+                nodes_detail_df = shard_allocation(self.num_of_shards, self.num_of_nodes, algorithm)
+                imbalance_df = imbalance_df.append(calculate_imbalance_level(algorithm, self.num_of_nodes, self.load_vectors, nodes_detail_df,
                                                                              cloud_load_lvl=cloud_load_lvl), ignore_index=True)
 
                 requests_completed_df = simulation(parallel_requests, self.period, self.num_of_nodes, algorithm)
@@ -70,57 +111,22 @@ class ExperimentExecutor:
 
 
 def experiment_executor():
-    experiment = str(input("Which experiment?:"))
-    while experiment not in ['1', '2', '3', 'all']:
-        experiment = str(input("Which experiment? (Enter number from 1 to 3):"))
-
-    algorithms = str(input("Which allocation algorithm?:"))
-    while algorithms not in ["random", "sequential", "SALP", "all"]:
-        algorithms = str(input("Which allocation algorithm? (random/sequential/SALP):"))
-
-    if algorithms == "all":
-        algorithms = ["random", "sequential", "SALP"]
-    else:
-        algorithms = [algorithms]
-
-    global num_of_shards
-    num_of_shards = int(input("Num of shards:"))
-    num_of_samples = 100
-    period = 5.0
-    shape = 2.0
-    scale = num_of_shards / 16.0
-    parallel_requests = 5
-    num_of_nodes = round(num_of_shards / 25)
-
     clear_directory()
 
-    requests, load_vectors = generate_load_vectors(num_of_samples, period, shape, scale)
+    executor = ExperimentExecutor(). \
+        manual_config()
 
-    ExperimentExecutor()
+    executor.print()
 
-    if experiment == '1':
-        experiment_one(num_of_samples, period, num_of_nodes, algorithms, shape, scale, load_vectors)
-    elif experiment == '2':
-        experiment_two(num_of_samples, period, algorithms, num_of_nodes, parallel_requests)
-    elif experiment == '3':
-        experiment_three(algorithms, parallel_requests, period, num_of_samples, shape, scale, load_vectors)
-    elif experiment == 'all':
-        experiment_one(num_of_samples, period, num_of_nodes, algorithms, shape, scale, load_vectors)
-        experiment_three(algorithms, parallel_requests, period, num_of_samples, shape, scale, load_vectors)
-        experiment_two(num_of_samples, period, algorithms, num_of_nodes, parallel_requests)
-    else:
-        print("Wrong experiment!")
+    requests, load_vectors = generate_load_vectors(executor.num_of_shards, executor.num_of_samples, executor.period, executor.shape, executor.scale)
+
+    print(load_vectors)
+
+    executor.add_load_vectors(load_vectors). \
+        run_experiments()
 
 
-def experiment_runner(x):
-    return {
-        '1': experiment_one(num_of_samples, period, num_of_nodes, algorithms, shape, scale, load_vectors),
-        '2': experiment_two(num_of_samples, period, algorithms, num_of_nodes, parallel_requests),
-        '3': experiment_three(algorithms, parallel_requests, period, num_of_samples, shape, scale, load_vectors)
-    }
-
-
-def generate_load_vectors(num_of_samples, period, shape, scale):
+def generate_load_vectors(num_of_shards, num_of_samples, period, shape, scale):
     requests, load_vectors = generator(num_of_shards, num_of_samples, period, shape, scale)
 
     requests.to_csv('./experiments/requests.csv')
@@ -130,36 +136,6 @@ def generate_load_vectors(num_of_samples, period, shape, scale):
         save_load_vector(vector)
 
     return requests, load_vectors
-
-
-def experiment_one(num_of_samples, period, num_of_nodes, algorithms, shape, scale, load_vectors):
-    load_vectors_df = pd.DataFrame(load_vectors)
-    processing_time = sum(load_vectors_df.sum(axis=1))
-    periods_in_vector = load_vectors_df.shape[1]
-
-    min_parallel_requests = round(processing_time / (periods_in_vector * num_of_nodes * 0.9))
-    max_parallel_requests = round(processing_time / (periods_in_vector * num_of_nodes * 0.1))
-
-    delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'cloud_load_lvl', 'sum_of_delay', 'delay_percentage'])
-    imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'cloud_load_lvl', 'sum_of_imbalance', 'imbalance_percentage'])
-
-    for parallel_requests in range(min_parallel_requests, max_parallel_requests + 1, 1):
-        for algorithm in algorithms:
-            cloud_load_lvl = processing_time / (periods_in_vector * num_of_nodes * parallel_requests)
-
-            nodes_detail_df = shard_allocation(num_of_nodes, algorithm)
-            imbalance_df = imbalance_df.append(calculate_imbalance_level(algorithm, num_of_nodes, load_vectors, nodes_detail_df,
-                                                                         cloud_load_lvl=cloud_load_lvl), ignore_index=True)
-
-            requests_completed_df = simulation(parallel_requests, period, num_of_nodes, algorithm)
-
-            delays_df = delays_df.append(calculate_delays(num_of_samples, period, algorithm, num_of_nodes, requests_completed_df,
-                                                          cloud_load_lvl=cloud_load_lvl), ignore_index=True)
-
-    delays_df.to_csv('./experiments/' + CLOUD_LOAD_LEVEL + '/delays_' + getCurrentDateTime() + '.csv', index=False)
-    imbalance_df.to_csv('./experiments/' + CLOUD_LOAD_LEVEL + '/imbalance_' + getCurrentDateTime() + '.csv', index=False)
-
-    generate_plots(imbalance_df, delays_df, CLOUD_LOAD_LEVEL)
 
 
 def experiment_two(num_of_samples, period, algorithms, nodes, parallel_requests):
@@ -321,7 +297,7 @@ def simulation(parallel_requests, period, nodes, algorithm):
     return requests_completed_df
 
 
-def shard_allocation(nodes, algorithm):
+def shard_allocation(num_of_shards, nodes, algorithm):
     shard_allocated_df = shard_allocator(num_of_shards, nodes, algorithm)
 
     shards_allocated = []
