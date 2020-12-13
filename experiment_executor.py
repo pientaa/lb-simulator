@@ -30,12 +30,15 @@ class ExperimentExecutor:
         self.experiments = ['1', '2', '3']
         self.algorithms = ["random", "sequential", "SALP"]
         self.load_vectors = []
+        self.shard_on_nodes = pd.DataFrame(columns=["node", "shard"])
+        self.current_algorithm = "random"
 
     def print(self):
         print("Shards: " + str(self.num_of_shards))
         print("Nodes: " + str(self.num_of_nodes))
         print("Period: " + str(self.period))
         print("Shape: " + str(self.shape))
+        print("Experiments: " + str(self.experiments))
 
     def manual_config(self):
         experiment = str(input("Which experiment?:"))
@@ -67,6 +70,15 @@ class ExperimentExecutor:
         self.load_vectors = load_vectors
         return self
 
+    def shard_allocation(self, algorithm):
+        shard_allocated_df = shard_allocator(self.num_of_shards, self.num_of_nodes, algorithm)
+
+        shard_allocated_df.to_csv('./experiments/' + algorithm + '/shard_allocated_' + str(self.num_of_nodes) + '.csv',
+                                  index=False)
+        shard_allocated_df.to_csv('./simulator/shard_allocated.csv', index=False)
+
+        return shard_allocated_df
+
     def run_experiments(self):
         for experiment in self.experiments:
             self.experiment_runner().get(experiment)
@@ -93,14 +105,21 @@ class ExperimentExecutor:
             for algorithm in self.algorithms:
                 cloud_load_lvl = processing_time / (periods_in_vector * self.num_of_nodes * parallel_requests)
 
+                # self.shard_allocation(algorithm)
+
                 nodes_detail_df = shard_allocation(self.num_of_shards, self.num_of_nodes, algorithm)
-                imbalance_df = imbalance_df.append(calculate_imbalance_level(algorithm, self.num_of_nodes, self.load_vectors, nodes_detail_df,
-                                                                             cloud_load_lvl=cloud_load_lvl), ignore_index=True)
+
+                new_imbalance_lvl = calculate_imbalance_level(algorithm, self.num_of_nodes, self.load_vectors, nodes_detail_df, CLOUD_LOAD_LEVEL,
+                                                              cloud_load_lvl)
+
+                imbalance_df = imbalance_df.append(new_imbalance_lvl, ignore_index=True)
 
                 requests_completed_df = simulation(parallel_requests, self.period, self.num_of_nodes, algorithm)
 
-                delays_df = delays_df.append(calculate_delays(self.num_of_samples, self.period, algorithm, self.num_of_nodes, requests_completed_df,
-                                                              cloud_load_lvl=cloud_load_lvl), ignore_index=True)
+                new_delays_row = calculate_delays(self.num_of_samples, self.period, algorithm, self.num_of_nodes, requests_completed_df,
+                                                  CLOUD_LOAD_LEVEL, cloud_load_lvl)
+
+                delays_df = delays_df.append(new_delays_row, ignore_index=True)
 
         delays_df.to_csv('./experiments/' + CLOUD_LOAD_LEVEL + '/delays_' + getCurrentDateTime() + '.csv', index=False)
         imbalance_df.to_csv('./experiments/' + CLOUD_LOAD_LEVEL + '/imbalance_' + getCurrentDateTime() + '.csv', index=False)
@@ -194,8 +213,7 @@ def generate_load_vectors(num_of_shards, num_of_samples, period, shape, scale):
     return requests, load_vectors
 
 
-def calculate_delays(num_of_samples, period, algorithm, nodes, requests_completed_df, shards_per_node_ratio=None, cloud_load_lvl=None,
-                     load_ratio=None):
+def calculate_delays(num_of_samples, period, algorithm, nodes, requests_completed_df, experiment, experiment_value):
     complete_processing_time = num_of_samples * period
 
     ignored_requests = requests_completed_df[requests_completed_df['timestamp'] >= complete_processing_time]
@@ -210,48 +228,34 @@ def calculate_delays(num_of_samples, period, algorithm, nodes, requests_complete
         else:
             observed_requests.at[index, 'delay'] = 0
 
-        total_delay = observed_requests['delay'].sum()
-        percentage_delay = (total_delay / complete_processing_time) * 100.0
+    total_delay = observed_requests['delay'].sum()
+    percentage_delay = (total_delay / complete_processing_time) * 100.0
 
-    if cloud_load_lvl is None and load_ratio is None and shards_per_node_ratio is not None:
-        to_append = {'algorithm': algorithm, 'nodes': nodes, 'sum_of_delay': total_delay, 'delay_percentage': percentage_delay,
-                     'shards_per_node_ratio': shards_per_node_ratio}
-    elif cloud_load_lvl is not None and load_ratio is None and shards_per_node_ratio is None:
-        to_append = {'algorithm': algorithm, 'nodes': nodes, 'cloud_load_lvl': cloud_load_lvl, 'sum_of_delay': total_delay,
-                     'delay_percentage': percentage_delay}
-    elif cloud_load_lvl is None and load_ratio is not None and shards_per_node_ratio is None:
-        to_append = {'algorithm': algorithm, 'nodes': nodes, 'load_ratio': load_ratio, 'sum_of_delay': total_delay,
-                     'delay_percentage': percentage_delay}
-    else:
-        to_append = None
-    return to_append
+    return {'algorithm': algorithm, 'nodes': nodes, 'sum_of_delay': total_delay, 'delay_percentage': percentage_delay, experiment: experiment_value}
 
 
-def calculate_imbalance_level(algorithm, nodes, load_vectors, nodes_detail_df, shards_per_node_ratio=None, cloud_load_lvl=None, load_ratio=None):
+def calculate_imbalance_level(algorithm, num_of_nodes, load_vectors, nodes_detail_df, experiment, experiment_value):
     load_vectors_df = pd.DataFrame(load_vectors)
+
     WTS = load_vectors_df.sum(axis=0)
-    NWTS = WTS / nodes
+    NWTS = WTS / num_of_nodes
     NWTS_module = calculate_manhattan_vector_module(NWTS)
 
     sum_imbalance = 0
-    for index, row in nodes_detail_df.iterrows():
+    for (node, group) in nodes_detail_df.groupby('node'):
+        vectors = [int]
+        for shard in group["shard"].to_list():
+            print(load_vectors[shard - 1])
+            vectors.append(load_vectors[shard - 1])
+        node_load_vector = pd.DataFrame(vectors).sum(axis=0)
+
         sum_imbalance = sum_imbalance + abs(
-            calculate_manhattan_vector_module(diff_list(row['load_vector'], NWTS)))
+            calculate_manhattan_vector_module(diff_list(node_load_vector, NWTS)))
+
     imb_lvl = (sum_imbalance / NWTS_module) * 100.0
 
-    if cloud_load_lvl is None and load_ratio is None and shards_per_node_ratio is not None:
-        to_append = {'algorithm': algorithm, 'nodes': nodes, 'sum_of_imbalance': sum_imbalance,
-                     'imbalance_percentage': imb_lvl, 'shards_per_node_ratio': shards_per_node_ratio}
-    elif cloud_load_lvl is not None and load_ratio is None and shards_per_node_ratio is None:
-        to_append = {'algorithm': algorithm, 'nodes': nodes, 'cloud_load_lvl': cloud_load_lvl, 'sum_of_imbalance': sum_imbalance,
-                     'imbalance_percentage': imb_lvl}
-    elif cloud_load_lvl is None and load_ratio is not None and shards_per_node_ratio is None:
-        to_append = {'algorithm': algorithm, 'nodes': nodes, 'load_ratio': load_ratio, 'sum_of_imbalance': sum_imbalance,
-                     'imbalance_percentage': imb_lvl}
-    else:
-        to_append = None
-
-    return to_append
+    return {'algorithm': algorithm, 'nodes': num_of_nodes, 'sum_of_imbalance': sum_imbalance, 'imbalance_percentage': imb_lvl,
+            experiment: experiment_value}
 
 
 def generate_plots(imbalance_lvl, delays_df, experiment):
@@ -293,17 +297,9 @@ def simulation(parallel_requests, period, nodes, algorithm):
 def shard_allocation(num_of_shards, nodes, algorithm):
     shard_allocated_df = shard_allocator(num_of_shards, nodes, algorithm)
 
-    shards_allocated = []
-    for index, row in shard_allocated_df.iterrows():
-        node = row['node']
-        for shard in row['shards']:
-            shards_allocated.append([node, shard])
-
-    shards_allocated_to_csv = pd.DataFrame(shards_allocated, columns=['node', 'shard'])
-
-    shards_allocated_to_csv.to_csv('./experiments/' + algorithm + '/shard_allocated_' + str(nodes) + '.csv',
-                                   index=False)
-    shards_allocated_to_csv.to_csv('./simulator/shard_allocated.csv', index=False)
+    shard_allocated_df.to_csv('./experiments/' + algorithm + '/shard_allocated_' + str(nodes) + '.csv',
+                              index=False)
+    shard_allocated_df.to_csv('./simulator/shard_allocated.csv', index=False)
 
     return shard_allocated_df
 
@@ -343,9 +339,6 @@ def reset_directory():
     os.mkdir("experiments/" + CLOUD_LOAD_LEVEL)
     os.mkdir("experiments/" + LOAD_RATIO)
     os.mkdir("experiments/" + SHARDS_PER_NODE_RATIO)
-
-
-#     TODO: rest of experiments paths
 
 
 def getCurrentDateTime():
