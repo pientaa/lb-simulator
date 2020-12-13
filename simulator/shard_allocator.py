@@ -51,7 +51,7 @@ def random_allocation():
             if current_node != num_of_nodes:
                 current_node += 1
 
-    return pd.DataFrame(shards_on_nodes, columns=['node', 'shard'])
+    return pd.DataFrame(shards_on_nodes, columns=['shard', 'node'])
 
 
 def sequential_allocation():
@@ -66,7 +66,7 @@ def sequential_allocation():
             if current_node != num_of_nodes:
                 current_node += 1
 
-    return pd.DataFrame(shards_on_nodes, columns=['node', 'shard'])
+    return pd.DataFrame(shards_on_nodes, columns=['shard', 'node'])
 
 
 def SALP_allocation():
@@ -119,7 +119,7 @@ def SALP_allocation():
                 nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()) > NWTS_module:
             list_inactive_nodes.append(node)
 
-    return nodes_detail_df[['node', 'shard']]
+    return nodes_detail_df[['shard', 'node']]
 
 
 def calculate_manhattan_vector_module(row):
