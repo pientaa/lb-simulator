@@ -245,7 +245,6 @@ def calculate_imbalance_level(algorithm, num_of_nodes, load_vectors, nodes_detai
     for (node, group) in nodes_detail_df.groupby('node'):
         vectors = [int]
         for shard in group["shard"].to_list():
-            print(load_vectors[shard - 1])
             vectors.append(load_vectors[shard - 1])
         node_load_vector = pd.DataFrame(vectors).sum(axis=0)
 
