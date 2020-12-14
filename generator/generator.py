@@ -2,10 +2,8 @@ import math
 import sys
 from itertools import chain
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import scipy.special as sps
 
 period = 5.0
 
@@ -37,15 +35,7 @@ def generator(num_of_shards, num_of_samples, new_period, shape, scale):
 
     assert len(requests) == sum
 
-    # Plot density
-    count, bins, ignored = plt.hist(tasks, 25, density=True)
-    y = bins ** (shape - 1) * (np.exp(-bins / scale) /
-                               (sps.gamma(shape) * scale ** shape))
-    
-    plt.plot(bins, y, linewidth=2, color='r')
-    plt.savefig("tasks_hist.png")
-
-    return requests, generate_load_vectors(requests, num_of_shards)
+    return requests, generate_load_vectors(requests)
 
 
 def generate_time_stamps(tasks):
@@ -66,11 +56,11 @@ def normalize_vector(v):
     return v / norm
 
 
-def flatten(listOfLists):
-    return list(chain.from_iterable(listOfLists))
+def flatten(list_of_lists):
+    return list(chain.from_iterable(list_of_lists))
 
 
-def generate_load_vectors(requests, num_of_shards):
+def generate_load_vectors(requests):
     load_vectors = []
     max_vector_size = 0
 
@@ -81,17 +71,17 @@ def generate_load_vectors(requests, num_of_shards):
             current_requests = group[(group['timestamp'] >= period * current_period_index) & (
                     group['timestamp'] < period * (current_period_index + 1))]
 
-            if (not current_requests.empty):
+            if not current_requests.empty:
                 for index, current_request in current_requests.iterrows():
                     load_vector = calculate_load_vector(current_request, current_period_index, load_vector)
 
-        if (max_vector_size < len(load_vector)):
+        if max_vector_size < len(load_vector):
             max_vector_size = len(load_vector)
 
         load_vectors.append(load_vector)
 
     for vector in load_vectors:
-        while (len(vector) < max_vector_size):
+        while len(vector) < max_vector_size:
             vector.append(0.0)
 
     return load_vectors
@@ -107,10 +97,10 @@ def calculate_load_vector(current_request, current_load_index, load_vector):
 
     current_load = round(float(current_request['load']), 3)
 
-    if (num_of_periods == 1):
+    if num_of_periods == 1:
         load_vector[first_period_index] = load_vector[first_period_index] + normalize(current_load)
 
-    if (num_of_periods == 2):
+    if num_of_periods == 2:
         first_period_load = (first_period_index + 1) * period - start_time
         second_period_load = current_load - first_period_load
 
@@ -119,12 +109,12 @@ def calculate_load_vector(current_request, current_load_index, load_vector):
 
         load_vector[first_period_index] += first_period_load
 
-        if (len(load_vector) > first_period_index + 1):
+        if len(load_vector) > first_period_index + 1:
             load_vector[first_period_index + 1] += second_period_load
         else:
             load_vector.append(second_period_load)
 
-    if (num_of_periods > 2):
+    if num_of_periods > 2:
         first_period_load = (first_period_index + 1) * period - start_time
         num_of_full_periods = num_of_periods - 2
 
@@ -134,14 +124,14 @@ def calculate_load_vector(current_request, current_load_index, load_vector):
 
         for index in range(num_of_full_periods):
             current_index = first_period_index + index
-            if (len(load_vector) > current_index + 1):
+            if len(load_vector) > current_index + 1:
                 load_vector[current_index] = load_vector[current_index] + 1.0
             else:
                 load_vector.append(1.0)
 
         last_period_load = normalize(current_load - first_period_load - num_of_full_periods)
 
-        if (len(load_vector) > last_period_index):
+        if len(load_vector) > last_period_index:
             load_vector[last_period_index] = load_vector[last_period_index] + last_period_load
         else:
             load_vector.append(last_period_load)
