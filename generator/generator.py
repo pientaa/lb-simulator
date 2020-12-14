@@ -2,10 +2,8 @@ import math
 import sys
 from itertools import chain
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import scipy.special as sps
 
 period = 5.0
 
@@ -36,14 +34,6 @@ def generator(num_of_shards, num_of_samples, new_period, shape, scale):
         sum += task
 
     assert len(requests) == sum
-
-    # Plot density
-    count, bins, ignored = plt.hist(tasks, 25, density=True)
-    y = bins ** (shape - 1) * (np.exp(-bins / scale) /
-                               (sps.gamma(shape) * scale ** shape))
-
-    plt.plot(bins, y, linewidth=2, color='r')
-    plt.savefig("tasks_hist.png")
 
     return requests, generate_load_vectors(requests)
 
