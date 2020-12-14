@@ -121,7 +121,13 @@ def SALP_allocation():
 
         print(nodes_detail_df)
 
-    return nodes_detail_df[['shard', 'node']]
+    shards_allocated = []
+    for index, row in nodes_detail_df.iterrows():
+        node = row['node']
+        for shard in row['shards']:
+            shards_allocated.append([node, shard])
+
+    return pd.DataFrame(shards_allocated, columns=['node', 'shard'])
 
 
 def calculate_manhattan_vector_module(row):
