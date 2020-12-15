@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from estimator.delay_estimator import estimate_delays
 from generator.generator import generator
 from simulator.shard_allocator import calculate_manhattan_vector_module
 from simulator.shard_allocator import diff_list
@@ -326,5 +327,6 @@ def getCurrentDateTime():
 
 
 if __name__ == "__main__":
-    reset_directory()
-    experiment_executor()
+    estimate_delays()
+    # reset_directory()
+    # experiment_executor()
