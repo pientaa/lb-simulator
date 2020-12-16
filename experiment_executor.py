@@ -34,8 +34,9 @@ class ExperimentExecutor:
         self.shard_on_nodes = pd.DataFrame(columns=["shard", "node"])
         self.requests_completed = pd.DataFrame()
         self.current_algorithm = "random"
-        self.delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'cloud_load_lvl', 'sum_of_delay', 'delay_percentage'])
-        self.imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'cloud_load_lvl', 'sum_of_imbalance', 'imbalance_percentage'])
+        self.delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
+        self.estimated_delays = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
+        self.imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_imbalance', 'imbalance_percentage'])
 
     def print(self):
         print("Shards: " + str(self.num_of_shards))
@@ -143,7 +144,8 @@ class ExperimentExecutor:
                 self.shard_allocation(algorithm). \
                     calculate_imbalance_level(algorithm, CLOUD_LOAD_LEVEL, cloud_load_lvl). \
                     simulation(algorithm). \
-                    calculate_delays(algorithm, CLOUD_LOAD_LEVEL, cloud_load_lvl)
+                    calculate_delays(algorithm, CLOUD_LOAD_LEVEL, cloud_load_lvl). \
+                    estimate_delays(algorithm, CLOUD_LOAD_LEVEL, cloud_load_lvl)
 
         self.save_delays_and_imbalance(CLOUD_LOAD_LEVEL)
         self.generatePlots(CLOUD_LOAD_LEVEL)
@@ -168,7 +170,8 @@ class ExperimentExecutor:
                 self.shard_allocation(algorithm). \
                     calculate_imbalance_level(algorithm, LOAD_RATIO, load_ratio). \
                     simulation(algorithm). \
-                    calculate_delays(algorithm, LOAD_RATIO, load_ratio)
+                    calculate_delays(algorithm, LOAD_RATIO, load_ratio). \
+                    estimate_delays(algorithm, LOAD_RATIO, load_ratio)
 
         self.save_delays_and_imbalance(LOAD_RATIO)
         self.generatePlots(LOAD_RATIO)
@@ -188,15 +191,25 @@ class ExperimentExecutor:
                 self.shard_allocation(algorithm). \
                     calculate_imbalance_level(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio). \
                     simulation(algorithm). \
-                    calculate_delays(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio)
+                    calculate_delays(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio). \
+                    estimate_delays(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio)
 
         self.save_delays_and_imbalance(SHARDS_PER_NODE_RATIO)
         self.generatePlots(SHARDS_PER_NODE_RATIO)
 
     def calculate_delays(self, algorithm, experiment, experiment_value):
+        self.num_of_samples = pd.DataFrame(self.load_vectors).shape[1]
+
         complete_processing_time = self.num_of_samples * self.period
 
         observed_requests = self.requests_completed[self.requests_completed['timestamp'] < complete_processing_time]
+
+        # not_ended_requests = observed_requests[observed_requests['actual_end_time'] > complete_processing_time]
+        #
+        # observed_requests = observed_requests[observed_requests['actual_end_time'] <= complete_processing_time]
+        #
+        # not_ended_requests['actual_end_time'] = not_ended_requests['actual_end_time'].map(lambda x: complete_processing_time)
+        # not_ended_requests['delay'] = not_ended_requests['expected_end_time'].map(lambda x: complete_processing_time - x)
 
         for index, row in observed_requests[observed_requests['actual_end_time'] > complete_processing_time].iterrows():
             observed_requests.at[index, 'actual_end_time'] = complete_processing_time
@@ -208,6 +221,7 @@ class ExperimentExecutor:
                 observed_requests.at[index, 'delay'] = 0
 
         total_delay = observed_requests['delay'].sum()
+        # total_delay = observed_requests['delay'].sum() + not_ended_requests['delay'].sum()
         percentage_delay = (total_delay / complete_processing_time) * 100.0
 
         new_row = {'algorithm': algorithm, 'nodes': self.num_of_nodes, 'sum_of_delay': total_delay, 'delay_percentage': percentage_delay,
@@ -249,9 +263,30 @@ class ExperimentExecutor:
         plt.ylabel("Percentage value of total delay")
         plt.savefig(path + ".png")
 
+        plt.clf()
+        for group in self.estimated_delays['algorithm'].unique():
+            x = self.estimated_delays[self.estimated_delays['algorithm'] == group][experiment].tolist()
+            y = self.estimated_delays[self.estimated_delays['algorithm'] == group]['delay_percentage'].tolist()
+            plt.plot(x, y, label=group, linewidth=2)
+
+        path = "experiments/" + experiment + "/estimated_delays_" + experiment + "_" + getCurrentDateTime()
+        plt.legend(loc="upper right")
+        # TODO: Change label to more readable representation
+        plt.xlabel(experiment)
+        plt.ylabel("Percentage value of estimated total delay")
+        plt.savefig(path + ".png")
+
     def clear(self):
         self.delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'cloud_load_lvl', 'sum_of_delay', 'delay_percentage'])
         self.imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'cloud_load_lvl', 'sum_of_imbalance', 'imbalance_percentage'])
+
+    def estimate_delays(self, algorithm, experiment, experiment_value):
+        total_delay, percentage_delay = estimate_delays(self.parallel_requests)
+
+        new_row = {'algorithm': algorithm, 'nodes': self.num_of_nodes, 'sum_of_delay': total_delay, 'delay_percentage': percentage_delay,
+                   experiment: experiment_value}
+
+        self.estimated_delays = self.estimated_delays.append(new_row, ignore_index=True)
 
 
 def experiment_executor():
@@ -271,7 +306,6 @@ def experiment_executor():
 def generate_load_vectors(num_of_shards, num_of_samples, period, shape, scale):
     clear_directory()
     requests, load_vectors = generator(num_of_shards, num_of_samples, period, shape, scale)
-
     requests.to_csv('./experiments/requests.csv')
     requests.to_csv('./generator/requests.csv')
 
@@ -327,6 +361,5 @@ def getCurrentDateTime():
 
 
 if __name__ == "__main__":
-    estimate_delays()
-    # reset_directory()
-    # experiment_executor()
+    reset_directory()
+    experiment_executor()
