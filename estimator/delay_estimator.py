@@ -11,7 +11,6 @@ def estimate_delays(parallel_requests=5):
 
     load_vectors_df = pd.read_csv("./generator/load_vectors.csv", header=None)
 
-    num_of_shards = load_vectors_df.shape[0]
     num_of_samples = load_vectors_df.shape[1]
 
     shards_on_nodes = pd.read_csv("./simulator/shard_allocated.csv")
@@ -40,9 +39,4 @@ def estimate_delays(parallel_requests=5):
 
         T_sum = T_sum + T
 
-    print(T_sum)
-
     return T_sum, (T_sum / (num_of_samples * PERIOD)) * 100.0
-
-# if __name__ == "__main__":
-#     estimate_delays()

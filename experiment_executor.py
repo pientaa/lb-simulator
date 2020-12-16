@@ -204,13 +204,6 @@ class ExperimentExecutor:
 
         observed_requests = self.requests_completed[self.requests_completed['timestamp'] < complete_processing_time]
 
-        # not_ended_requests = observed_requests[observed_requests['actual_end_time'] > complete_processing_time]
-        #
-        # observed_requests = observed_requests[observed_requests['actual_end_time'] <= complete_processing_time]
-        #
-        # not_ended_requests['actual_end_time'] = not_ended_requests['actual_end_time'].map(lambda x: complete_processing_time)
-        # not_ended_requests['delay'] = not_ended_requests['expected_end_time'].map(lambda x: complete_processing_time - x)
-
         for index, row in observed_requests[observed_requests['actual_end_time'] > complete_processing_time].iterrows():
             observed_requests.at[index, 'actual_end_time'] = complete_processing_time
             new_delay = complete_processing_time - observed_requests[observed_requests.index == index]['expected_end_time'].item()
@@ -221,7 +214,6 @@ class ExperimentExecutor:
                 observed_requests.at[index, 'delay'] = 0
 
         total_delay = observed_requests['delay'].sum()
-        # total_delay = observed_requests['delay'].sum() + not_ended_requests['delay'].sum()
         percentage_delay = (total_delay / complete_processing_time) * 100.0
 
         new_row = {'algorithm': algorithm, 'nodes': self.num_of_nodes, 'sum_of_delay': total_delay, 'delay_percentage': percentage_delay,
