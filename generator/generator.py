@@ -36,7 +36,7 @@ def generator(num_of_shards, num_of_samples, new_period, shape, scale):
 
     assert len(requests) == sum
 
-    return requests, generate_load_vectors(requests)
+    return requests, generate_load_vectors(requests, num_of_shards)
 
 
 def generate_time_stamps(tasks):
@@ -61,7 +61,7 @@ def flatten(list_of_lists):
     return list(chain.from_iterable(list_of_lists))
 
 
-def generate_load_vectors(requests):
+def generate_load_vectors(requests, num_of_shards):
     load_vectors = []
     max_vector_size = 0
 
