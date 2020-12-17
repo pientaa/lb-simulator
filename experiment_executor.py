@@ -134,8 +134,9 @@ class ExperimentExecutor:
 
         min_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.9))
         max_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.1))
+        step = min_parallel_requests
 
-        for parallel_requests in range(min_parallel_requests, max_parallel_requests + 1, 1):
+        for parallel_requests in range(min_parallel_requests, max_parallel_requests + 1, step):
             self.parallel_requests = parallel_requests
 
             for algorithm in self.algorithms:
@@ -269,8 +270,9 @@ class ExperimentExecutor:
         plt.savefig(path + ".png")
 
     def clear(self):
-        self.delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'cloud_load_lvl', 'sum_of_delay', 'delay_percentage'])
-        self.imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'cloud_load_lvl', 'sum_of_imbalance', 'imbalance_percentage'])
+        self.delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
+        self.imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
+        self.estimated_delays = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_imbalance', 'imbalance_percentage'])
 
     def estimate_delays(self, algorithm, experiment, experiment_value):
         total_delay, percentage_delay = estimate_delays(self.parallel_requests)
