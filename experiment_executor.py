@@ -35,8 +35,8 @@ class ExperimentExecutor:
         self.requests_completed = pd.DataFrame()
         self.current_algorithm = "random"
         self.delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
-        self.estimated_delays = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
         self.imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_imbalance', 'imbalance_percentage'])
+        self.estimated_delays = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
 
     def print(self):
         print("Shards: " + str(self.num_of_shards))
@@ -67,7 +67,7 @@ class ExperimentExecutor:
         self.shape = 2.0
         self.scale = self.num_of_shards / 16.0
         self.parallel_requests = 5
-        self.num_of_nodes = 1
+        self.num_of_nodes = round(self.num_of_shards / 10)
 
         return self
 
@@ -271,8 +271,8 @@ class ExperimentExecutor:
 
     def clear(self):
         self.delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
-        self.imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
-        self.estimated_delays = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_imbalance', 'imbalance_percentage'])
+        self.imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_imbalance', 'imbalance_percentage'])
+        self.estimated_delays = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
 
     def estimate_delays(self, algorithm, experiment, experiment_value):
         total_delay, percentage_delay = estimate_delays(self.parallel_requests)

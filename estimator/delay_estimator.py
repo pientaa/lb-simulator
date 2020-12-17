@@ -25,17 +25,29 @@ def estimate_delays(parallel_requests=5):
             vectors.append(load_vectors_df.iloc[shard['shard'] - 1, :].to_list())
 
         requests_on_node = requests[requests['shard'].isin(shards['shard'].to_list())]
-        requests_on_node['period'] = requests_on_node['timestamp'].map(lambda x: ceil(x / PERIOD))
-        requests_per_period = []
+        requests_on_node = requests_on_node.assign(period=requests_on_node['timestamp'].map(lambda x: ceil(x / PERIOD)))
+        requests_per_period = [0] * num_of_samples
 
         for (period, requests) in requests_on_node.groupby('period'):
-            requests_per_period.append(requests['period'].count())
+            requests_per_period[period - 1] = requests['period'].count()
 
         node_load = pd.DataFrame(vectors).values.sum() / (parallel_requests * num_of_samples)
 
-        c_a = pd.DataFrame(requests_per_period).std() / pd.DataFrame(requests_per_period).mean()
+        requests_per_period_std = pd.DataFrame(requests_per_period).values.std()
+
+        if requests_per_period_std <= 0.0:
+            c_a = 0.0
+        else:
+            c_a = pd.DataFrame(requests_per_period).std() / pd.DataFrame(requests_per_period).mean()
 
         T = pd.DataFrame(vectors).values.sum() * abs(node_load / (1 - node_load)) * (c_a * c_a / 2.0)
+
+        print("node_load:")
+        print(node_load)
+        print("c_a:")
+        print(c_a)
+        print("T:")
+        print(T)
 
         T_sum = T_sum + T
 
