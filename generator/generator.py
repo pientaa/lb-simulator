@@ -1,4 +1,5 @@
 import math
+import random
 import sys
 from itertools import chain
 
@@ -35,7 +36,7 @@ def generator(num_of_shards, num_of_samples, new_period, shape, scale):
 
     assert len(requests) == sum
 
-    return requests, generate_load_vectors(requests)
+    return requests, generate_load_vectors(requests, num_of_shards)
 
 
 def generate_time_stamps(tasks):
@@ -60,7 +61,7 @@ def flatten(list_of_lists):
     return list(chain.from_iterable(list_of_lists))
 
 
-def generate_load_vectors(requests):
+def generate_load_vectors(requests, num_of_shards):
     load_vectors = []
     max_vector_size = 0
 
@@ -83,6 +84,11 @@ def generate_load_vectors(requests):
     for vector in load_vectors:
         while len(vector) < max_vector_size:
             vector.append(0.0)
+
+    while len(load_vectors) < num_of_shards:
+        load_vectors.append([0] * max_vector_size)
+
+    random.shuffle(load_vectors)
 
     return load_vectors
 

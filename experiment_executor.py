@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from estimator.delay_estimator import estimate_delays
 from generator.generator import generator
 from simulator.shard_allocator import calculate_manhattan_vector_module
 from simulator.shard_allocator import diff_list
@@ -33,8 +34,9 @@ class ExperimentExecutor:
         self.shard_on_nodes = pd.DataFrame(columns=["shard", "node"])
         self.requests_completed = pd.DataFrame()
         self.current_algorithm = "random"
-        self.delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'cloud_load_lvl', 'sum_of_delay', 'delay_percentage'])
-        self.imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'cloud_load_lvl', 'sum_of_imbalance', 'imbalance_percentage'])
+        self.delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
+        self.imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_imbalance', 'imbalance_percentage'])
+        self.estimated_delays = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
 
     def print(self):
         print("Shards: " + str(self.num_of_shards))
@@ -65,7 +67,7 @@ class ExperimentExecutor:
         self.shape = 2.0
         self.scale = self.num_of_shards / 16.0
         self.parallel_requests = 5
-        self.num_of_nodes = 1
+        self.num_of_nodes = round(self.num_of_shards / 10)
 
         return self
 
@@ -132,8 +134,9 @@ class ExperimentExecutor:
 
         min_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.9))
         max_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.1))
+        step = min_parallel_requests
 
-        for parallel_requests in range(min_parallel_requests, max_parallel_requests + 1, 1):
+        for parallel_requests in range(min_parallel_requests, max_parallel_requests + 1, step):
             self.parallel_requests = parallel_requests
 
             for algorithm in self.algorithms:
@@ -142,7 +145,8 @@ class ExperimentExecutor:
                 self.shard_allocation(algorithm). \
                     calculate_imbalance_level(algorithm, CLOUD_LOAD_LEVEL, cloud_load_lvl). \
                     simulation(algorithm). \
-                    calculate_delays(algorithm, CLOUD_LOAD_LEVEL, cloud_load_lvl)
+                    calculate_delays(algorithm, CLOUD_LOAD_LEVEL, cloud_load_lvl). \
+                    estimate_delays(algorithm, CLOUD_LOAD_LEVEL, cloud_load_lvl)
 
         self.save_delays_and_imbalance(CLOUD_LOAD_LEVEL)
         self.generatePlots(CLOUD_LOAD_LEVEL)
@@ -167,7 +171,8 @@ class ExperimentExecutor:
                 self.shard_allocation(algorithm). \
                     calculate_imbalance_level(algorithm, LOAD_RATIO, load_ratio). \
                     simulation(algorithm). \
-                    calculate_delays(algorithm, LOAD_RATIO, load_ratio)
+                    calculate_delays(algorithm, LOAD_RATIO, load_ratio). \
+                    estimate_delays(algorithm, LOAD_RATIO, load_ratio)
 
         self.save_delays_and_imbalance(LOAD_RATIO)
         self.generatePlots(LOAD_RATIO)
@@ -187,12 +192,15 @@ class ExperimentExecutor:
                 self.shard_allocation(algorithm). \
                     calculate_imbalance_level(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio). \
                     simulation(algorithm). \
-                    calculate_delays(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio)
+                    calculate_delays(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio). \
+                    estimate_delays(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio)
 
         self.save_delays_and_imbalance(SHARDS_PER_NODE_RATIO)
         self.generatePlots(SHARDS_PER_NODE_RATIO)
 
     def calculate_delays(self, algorithm, experiment, experiment_value):
+        self.num_of_samples = pd.DataFrame(self.load_vectors).shape[1]
+
         complete_processing_time = self.num_of_samples * self.period
 
         observed_requests = self.requests_completed[self.requests_completed['timestamp'] < complete_processing_time]
@@ -248,9 +256,31 @@ class ExperimentExecutor:
         plt.ylabel("Percentage value of total delay")
         plt.savefig(path + ".png")
 
+        plt.clf()
+        for group in self.estimated_delays['algorithm'].unique():
+            x = self.estimated_delays[self.estimated_delays['algorithm'] == group][experiment].tolist()
+            y = self.estimated_delays[self.estimated_delays['algorithm'] == group]['delay_percentage'].tolist()
+            plt.plot(x, y, label=group, linewidth=2)
+
+        path = "experiments/" + experiment + "/estimated_delays_" + experiment + "_" + getCurrentDateTime()
+        plt.legend(loc="upper right")
+        # TODO: Change label to more readable representation
+        plt.xlabel(experiment)
+        plt.ylabel("Percentage value of estimated total delay")
+        plt.savefig(path + ".png")
+
     def clear(self):
-        self.delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'cloud_load_lvl', 'sum_of_delay', 'delay_percentage'])
-        self.imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'cloud_load_lvl', 'sum_of_imbalance', 'imbalance_percentage'])
+        self.delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
+        self.imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_imbalance', 'imbalance_percentage'])
+        self.estimated_delays = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
+
+    def estimate_delays(self, algorithm, experiment, experiment_value):
+        total_delay, percentage_delay = estimate_delays(self.parallel_requests)
+
+        new_row = {'algorithm': algorithm, 'nodes': self.num_of_nodes, 'sum_of_delay': total_delay, 'delay_percentage': percentage_delay,
+                   experiment: experiment_value}
+
+        self.estimated_delays = self.estimated_delays.append(new_row, ignore_index=True)
 
 
 def experiment_executor():
@@ -270,7 +300,6 @@ def experiment_executor():
 def generate_load_vectors(num_of_shards, num_of_samples, period, shape, scale):
     clear_directory()
     requests, load_vectors = generator(num_of_shards, num_of_samples, period, shape, scale)
-
     requests.to_csv('./experiments/requests.csv')
     requests.to_csv('./generator/requests.csv')
 
