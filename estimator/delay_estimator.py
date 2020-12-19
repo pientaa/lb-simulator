@@ -42,12 +42,12 @@ def estimate_delays(parallel_requests=5):
 
         T = pd.DataFrame(vectors).values.sum() * abs(node_load / (1 - node_load)) * (c_a * c_a / 2.0)
 
-        print("node_load:")
-        print(node_load)
-        print("c_a:")
-        print(c_a)
-        print("T:")
-        print(T)
+        # print("node_load:")
+        # print(node_load)
+        # print("c_a:")
+        # print(c_a)
+        # print("T:")
+        # print(T)
 
         T_sum = T_sum + T
 
