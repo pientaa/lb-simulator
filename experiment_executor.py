@@ -121,13 +121,13 @@ class ExperimentExecutor:
     def run_experiments(self):
         for experiment in self.experiments:
             if experiment == '1':
-                self.experiment_one()
+                self.experiment_cloud_load_level()
             if experiment == '2':
-                self.experiment_two()
+                self.experiment_load_variation_ratio()
             if experiment == '3':
-                self.experiment_three()
+                self.experiment_shards_per_nodes_ratio()
 
-    def experiment_one(self):
+    def experiment_cloud_load_level(self):
         self.clear()
         load_vectors_df = pd.DataFrame(self.load_vectors)
         processing_time = sum(load_vectors_df.sum(axis=1))
@@ -144,14 +144,11 @@ class ExperimentExecutor:
             for algorithm in self.algorithms:
                 self.run_experiment(algorithm, CLOUD_LOAD_LEVEL, cloud_load_lvl)
 
-        self.experiment_static_params = "Nodes: %d \nShards: %d \nLoad μ: %.2f \nLoad σ: %.2f " % (self.num_of_nodes,
-                                                                                                   self.num_of_shards,
-                                                                                                   self.shape * self.scale,
-                                                                                                   math.sqrt(self.shape) * self.scale)
+        self.generate_plot_text(CLOUD_LOAD_LEVEL)
         self.save_delays_and_imbalance(CLOUD_LOAD_LEVEL)
-        self.generatePlots(CLOUD_LOAD_LEVEL)
+        self.generate_plots(CLOUD_LOAD_LEVEL)
 
-    def experiment_two(self):
+    def experiment_load_variation_ratio(self):
         self.clear()
         self.shape = 25.0
         self.scale = 2.0
@@ -170,11 +167,11 @@ class ExperimentExecutor:
             for algorithm in self.algorithms:
                 self.run_experiment(algorithm, LOAD_VARIATION_RATIO, load_ratio)
 
-        self.experiment_static_params = "Nodes: %d \nShards: %d \nNode μ: %.2f " % (self.num_of_nodes, self.num_of_shards, self.parallel_requests)
+        self.generate_plot_text(LOAD_VARIATION_RATIO)
         self.save_delays_and_imbalance(LOAD_VARIATION_RATIO)
-        self.generatePlots(LOAD_VARIATION_RATIO)
+        self.generate_plots(LOAD_VARIATION_RATIO)
 
-    def experiment_three(self):
+    def experiment_shards_per_nodes_ratio(self):
         self.clear()
         min_num_of_nodes = round(self.num_of_shards / 100)
         if min_num_of_nodes < 1:
@@ -188,11 +185,9 @@ class ExperimentExecutor:
             for algorithm in self.algorithms:
                 self.run_experiment(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio)
 
-        self.experiment_static_params = "Nodes: %d \nShards: %d \nNode μ: %.2f " % (self.num_of_nodes,
-                                                                                    self.num_of_shards,
-                                                                                    self.parallel_requests)
+        self.generate_plot_text(SHARDS_PER_NODE_RATIO)
         self.save_delays_and_imbalance(SHARDS_PER_NODE_RATIO)
-        self.generatePlots(SHARDS_PER_NODE_RATIO)
+        self.generate_plots(SHARDS_PER_NODE_RATIO)
 
     def run_experiment(self, algorithm, experiment, experiment_param):
         self.shard_allocation(algorithm). \
@@ -229,16 +224,36 @@ class ExperimentExecutor:
 
         return self
 
+    def generate_plot_text(self, experiment):
+        switcher = {
+            CLOUD_LOAD_LEVEL: "Nodes: %d \nShards: %d \nLoad μ: %.2f \nLoad σ: %.2f " % (self.num_of_nodes,
+                                                                                         self.num_of_shards,
+                                                                                         self.shape * self.scale,
+                                                                                         math.sqrt(self.shape) * self.scale),
+            LOAD_VARIATION_RATIO: "Nodes: %d \nShards: %d \nNode μ: %.2f " % (self.num_of_nodes,
+                                                                              self.num_of_shards,
+                                                                              self.parallel_requests)
+,
+            SHARDS_PER_NODE_RATIO: "Shards: %d \nNode μ: %.2f\nLoad μ: %.2f \nLoad σ: %.2f " % (self.num_of_shards,
+                                                                                                self.parallel_requests,
+                                                                                                self.shape * self.scale,
+                                                                                                math.sqrt(self.shape) * self.scale)
+        }
+
+        self.experiment_static_params = switcher.get(experiment)
+        return self
+
     def save_delays_and_imbalance(self, experiment):
         self.delays_df.to_csv('./experiments/' + experiment + '/delays_' + getCurrentDateTime() + '.csv', index=False)
         self.imbalance_df.to_csv('./experiments/' + experiment + '/imbalance_' + getCurrentDateTime() + '.csv', index=False)
 
-    def generatePlots(self, experiment):
+    def generate_plots(self, experiment):
         plot_params = {
             "dataframe": [self.imbalance_df, self.delays_df, self.estimated_delays],
             "df_column": ["imbalance_percentage", "delay_percentage", "delay_percentage"],
             "path_folder": ["/imbalance_", "/delays_", "/estimated_delays_"],
-            "plot_y_label": ["Percentage value of imbalance", "Percentage value of total delay", "Percentage value of total delay"]
+            "plot_y_label": ["Percentage value of imbalance", "Percentage value of total delay", "Percentage value of total delay"],
+            "plot_x_label": ["Cloud load level", "Load variation ratio", "Shards per node ratio"]
         }
 
         for index in range(3):
@@ -249,8 +264,7 @@ class ExperimentExecutor:
                 plt.plot(x, y, label=group, linewidth=2)
             path = "experiments/" + experiment + plot_params["path_folder"][index] + experiment + "_" + getCurrentDateTime()
             plt.legend(loc="upper right")
-            # TODO: Change label to more readable representation
-            plt.xlabel(experiment)
+            plt.xlabel(plot_params["plot_x_label"][index])
             plt.ylabel(plot_params["plot_y_label"][index])
             plt.gcf().text(0.82, 0.75, self.experiment_static_params, fontsize=10)
             plt.subplots_adjust(right=0.8)
