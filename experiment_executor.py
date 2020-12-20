@@ -15,7 +15,7 @@ from simulator.shard_allocator import shard_allocator
 from simulator.simulator import simulator
 
 CLOUD_LOAD_LEVEL = "cloud_load_lvl"
-LOAD_RATIO = "load_ratio"
+LOAD_VARIATION_RATIO = "load_ratio"
 SHARDS_PER_NODE_RATIO = "shards_per_node_ratio"
 
 
@@ -37,6 +37,7 @@ class ExperimentExecutor:
         self.delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
         self.imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_imbalance', 'imbalance_percentage'])
         self.estimated_delays = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
+        self.experiment_static_params = ""
 
     def print(self):
         print("Shards: " + str(self.num_of_shards))
@@ -120,13 +121,13 @@ class ExperimentExecutor:
     def run_experiments(self):
         for experiment in self.experiments:
             if experiment == '1':
-                self.experiment_one()
+                self.experiment_cloud_load_level()
             if experiment == '2':
-                self.experiment_two()
+                self.experiment_load_variation_ratio()
             if experiment == '3':
-                self.experiment_three()
+                self.experiment_shards_per_nodes_ratio()
 
-    def experiment_one(self):
+    def experiment_cloud_load_level(self):
         self.clear()
         load_vectors_df = pd.DataFrame(self.load_vectors)
         processing_time = sum(load_vectors_df.sum(axis=1))
@@ -138,20 +139,16 @@ class ExperimentExecutor:
 
         for parallel_requests in range(min_parallel_requests, max_parallel_requests + 1, step):
             self.parallel_requests = parallel_requests
+            cloud_load_lvl = processing_time / (periods_in_vector * self.num_of_nodes * parallel_requests)
 
             for algorithm in self.algorithms:
-                cloud_load_lvl = processing_time / (periods_in_vector * self.num_of_nodes * parallel_requests)
+                self.run_experiment(algorithm, CLOUD_LOAD_LEVEL, cloud_load_lvl)
 
-                self.shard_allocation(algorithm). \
-                    calculate_imbalance_level(algorithm, CLOUD_LOAD_LEVEL, cloud_load_lvl). \
-                    simulation(algorithm). \
-                    calculate_delays(algorithm, CLOUD_LOAD_LEVEL, cloud_load_lvl). \
-                    estimate_delays(algorithm, CLOUD_LOAD_LEVEL, cloud_load_lvl)
-
+        self.generate_plot_text(CLOUD_LOAD_LEVEL)
         self.save_delays_and_imbalance(CLOUD_LOAD_LEVEL)
-        self.generatePlots(CLOUD_LOAD_LEVEL)
+        self.generate_plots(CLOUD_LOAD_LEVEL)
 
-    def experiment_two(self):
+    def experiment_load_variation_ratio(self):
         self.clear()
         self.shape = 25.0
         self.scale = 2.0
@@ -168,16 +165,13 @@ class ExperimentExecutor:
             load_ratio = (math.sqrt(self.shape) * self.scale) / mean
 
             for algorithm in self.algorithms:
-                self.shard_allocation(algorithm). \
-                    calculate_imbalance_level(algorithm, LOAD_RATIO, load_ratio). \
-                    simulation(algorithm). \
-                    calculate_delays(algorithm, LOAD_RATIO, load_ratio). \
-                    estimate_delays(algorithm, LOAD_RATIO, load_ratio)
+                self.run_experiment(algorithm, LOAD_VARIATION_RATIO, load_ratio)
 
-        self.save_delays_and_imbalance(LOAD_RATIO)
-        self.generatePlots(LOAD_RATIO)
+        self.generate_plot_text(LOAD_VARIATION_RATIO)
+        self.save_delays_and_imbalance(LOAD_VARIATION_RATIO)
+        self.generate_plots(LOAD_VARIATION_RATIO)
 
-    def experiment_three(self):
+    def experiment_shards_per_nodes_ratio(self):
         self.clear()
         min_num_of_nodes = round(self.num_of_shards / 100)
         if min_num_of_nodes < 1:
@@ -189,14 +183,20 @@ class ExperimentExecutor:
             shards_per_node_ratio = 1 / nodes
 
             for algorithm in self.algorithms:
-                self.shard_allocation(algorithm). \
-                    calculate_imbalance_level(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio). \
-                    simulation(algorithm). \
-                    calculate_delays(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio). \
-                    estimate_delays(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio)
+                self.run_experiment(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio)
 
+        self.generate_plot_text(SHARDS_PER_NODE_RATIO)
         self.save_delays_and_imbalance(SHARDS_PER_NODE_RATIO)
-        self.generatePlots(SHARDS_PER_NODE_RATIO)
+        self.generate_plots(SHARDS_PER_NODE_RATIO)
+
+    def run_experiment(self, algorithm, experiment, experiment_param):
+        self.shard_allocation(algorithm). \
+            calculate_imbalance_level(algorithm, experiment, experiment_param). \
+            simulation(algorithm). \
+            calculate_delays(algorithm, experiment, experiment_param). \
+            estimate_delays(algorithm, experiment, experiment_param)
+
+        return self
 
     def calculate_delays(self, algorithm, experiment, experiment_value):
         self.num_of_samples = pd.DataFrame(self.load_vectors).shape[1]
@@ -224,50 +224,51 @@ class ExperimentExecutor:
 
         return self
 
+    def generate_plot_text(self, experiment):
+        switcher = {
+            CLOUD_LOAD_LEVEL: "Nodes: %d \nShards: %d \nLoad μ: %.2f \nLoad σ: %.2f " % (self.num_of_nodes,
+                                                                                         self.num_of_shards,
+                                                                                         self.shape * self.scale,
+                                                                                         math.sqrt(self.shape) * self.scale),
+            LOAD_VARIATION_RATIO: "Nodes: %d \nShards: %d \nNode μ: %.2f " % (self.num_of_nodes,
+                                                                              self.num_of_shards,
+                                                                              self.parallel_requests)
+,
+            SHARDS_PER_NODE_RATIO: "Shards: %d \nNode μ: %.2f\nLoad μ: %.2f \nLoad σ: %.2f " % (self.num_of_shards,
+                                                                                                self.parallel_requests,
+                                                                                                self.shape * self.scale,
+                                                                                                math.sqrt(self.shape) * self.scale)
+        }
+
+        self.experiment_static_params = switcher.get(experiment)
+        return self
+
     def save_delays_and_imbalance(self, experiment):
         self.delays_df.to_csv('./experiments/' + experiment + '/delays_' + getCurrentDateTime() + '.csv', index=False)
         self.imbalance_df.to_csv('./experiments/' + experiment + '/imbalance_' + getCurrentDateTime() + '.csv', index=False)
 
-    def generatePlots(self, experiment):
-        plt.clf()
+    def generate_plots(self, experiment):
+        plot_params = {
+            "dataframe": [self.imbalance_df, self.delays_df, self.estimated_delays],
+            "df_column": ["imbalance_percentage", "delay_percentage", "delay_percentage"],
+            "path_folder": ["/imbalance_", "/delays_", "/estimated_delays_"],
+            "plot_y_label": ["Percentage value of imbalance", "Percentage value of total delay", "Percentage value of total delay"],
+            "plot_x_label": ["Cloud load level", "Load variation ratio", "Shards per node ratio"]
+        }
 
-        for group in self.imbalance_df['algorithm'].unique():
-            x = self.imbalance_df[self.imbalance_df['algorithm'] == group][experiment].tolist()
-            y = self.imbalance_df[self.imbalance_df['algorithm'] == group]['imbalance_percentage'].tolist()
-            plt.plot(x, y, label=group, linewidth=2)
-
-        path = "experiments/" + experiment + "/imbalance" + "_" + getCurrentDateTime()
-        plt.legend(loc="upper right")
-        # TODO: Change label to more readable representation
-        plt.xlabel(experiment)
-        plt.ylabel("Percentage value of imbalance")
-        plt.savefig(path + ".png")
-
-        plt.clf()
-        for group in self.delays_df['algorithm'].unique():
-            x = self.delays_df[self.delays_df['algorithm'] == group][experiment].tolist()
-            y = self.delays_df[self.delays_df['algorithm'] == group]['delay_percentage'].tolist()
-            plt.plot(x, y, label=group, linewidth=2)
-
-        path = "experiments/" + experiment + "/delays" + experiment + "_" + getCurrentDateTime()
-        plt.legend(loc="upper right")
-        # TODO: Change label to more readable representation
-        plt.xlabel(experiment)
-        plt.ylabel("Percentage value of total delay")
-        plt.savefig(path + ".png")
-
-        plt.clf()
-        for group in self.estimated_delays['algorithm'].unique():
-            x = self.estimated_delays[self.estimated_delays['algorithm'] == group][experiment].tolist()
-            y = self.estimated_delays[self.estimated_delays['algorithm'] == group]['delay_percentage'].tolist()
-            plt.plot(x, y, label=group, linewidth=2)
-
-        path = "experiments/" + experiment + "/estimated_delays_" + experiment + "_" + getCurrentDateTime()
-        plt.legend(loc="upper right")
-        # TODO: Change label to more readable representation
-        plt.xlabel(experiment)
-        plt.ylabel("Percentage value of estimated total delay")
-        plt.savefig(path + ".png")
+        for index in range(3):
+            plt.clf()
+            for group in plot_params["dataframe"][index]['algorithm'].unique():
+                x = plot_params["dataframe"][index][plot_params["dataframe"][index]['algorithm'] == group][experiment].tolist()
+                y = plot_params["dataframe"][index][plot_params["dataframe"][index]['algorithm'] == group][plot_params["df_column"][index]].tolist()
+                plt.plot(x, y, label=group, linewidth=2)
+            path = "experiments/" + experiment + plot_params["path_folder"][index] + experiment + "_" + getCurrentDateTime()
+            plt.legend(loc="upper right")
+            plt.xlabel(plot_params["plot_x_label"][index])
+            plt.ylabel(plot_params["plot_y_label"][index])
+            plt.gcf().text(0.82, 0.75, self.experiment_static_params, fontsize=10)
+            plt.subplots_adjust(right=0.8)
+            plt.savefig(path + ".png")
 
     def clear(self):
         self.delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
@@ -342,7 +343,7 @@ def reset_directory():
     os.mkdir("experiments/random")
     os.mkdir("experiments/sequential")
     os.mkdir("experiments/" + CLOUD_LOAD_LEVEL)
-    os.mkdir("experiments/" + LOAD_RATIO)
+    os.mkdir("experiments/" + LOAD_VARIATION_RATIO)
     os.mkdir("experiments/" + SHARDS_PER_NODE_RATIO)
 
 
