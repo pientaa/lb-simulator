@@ -46,7 +46,7 @@ def estimate_delays(parallel_requests=5):
 
         for (period, requests) in requests_on_node.groupby('period'):
             E_ij_S = requests['load'].mean() ## Mean load of requests in time interval
-            ro_ij = ((requests['load'].sum() + WS_i)/ PERIOD) / (parallel_requests) ## ro_ij is the value of ro_i but in "j" interval; not sure about WS_i..
+            ro_ij = ((requests['load'].sum() + WS_i)/ PERIOD) / (num_of_samples * parallel_requests) ## ro_ij is the value of ro_i but in "j" interval; not sure about WS_i..
             
             ## Below line is calculating c_a_ij factor as a mean value of c_a_i factor for node
             ## c_a_ij factor is impossible to calculate manually, because we have information about only one interval
@@ -83,7 +83,8 @@ def estimate_delays(parallel_requests=5):
         total_delay = total_delay + float(T_sum)
 
     # print("Total delay: ", total_delay)
-    # print((total_delay / (num_of_samples * PERIOD)) * 100.0)
+    print((total_delay / (num_of_samples * PERIOD)) * 100.0)
+    # print(total_delay / E_S)
     # return total_delay, (total_delay / E_S)  ## Dr's equation, this has no sense!
     return total_delay, (total_delay / (num_of_samples * PERIOD)) * 100.0 ## IMO our way is better!
 
