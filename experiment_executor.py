@@ -65,8 +65,8 @@ class ExperimentExecutor:
         self.num_of_shards = int(input("Num of shards:"))
         self.num_of_samples = 100
         self.period = 5.0
-        self.shape = 2.0
-        self.scale = self.num_of_shards / 16.0
+        self.shape = 5.0
+        self.scale = self.num_of_shards / 32.0
         self.parallel_requests = 5
         self.num_of_nodes = round(self.num_of_shards / 10)
 
@@ -99,9 +99,11 @@ class ExperimentExecutor:
         NWTS = WTS / self.num_of_nodes
         NWTS_module = calculate_manhattan_vector_module(NWTS)
 
+        print(NWTS_module)
+
         sum_imbalance = 0
         for (node, group) in self.shard_on_nodes.groupby('node'):
-            vectors = [int]
+            vectors = []
             for shard in group["shard"].to_list():
                 vectors.append(self.load_vectors[shard - 1])
             node_load_vector = pd.DataFrame(vectors).sum(axis=0)
@@ -133,9 +135,13 @@ class ExperimentExecutor:
         processing_time = sum(load_vectors_df.sum(axis=1))
         periods_in_vector = load_vectors_df.shape[1]
 
-        min_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.9))
-        max_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.1))
+        min_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.1))
+        max_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.01))
         step = min_parallel_requests
+
+        print(periods_in_vector * self.num_of_nodes * 0.1)
+        print(periods_in_vector * self.num_of_nodes * 0.01)
+        print(processing_time)
 
         for parallel_requests in range(min_parallel_requests, max_parallel_requests + 1, step):
             self.parallel_requests = parallel_requests
@@ -150,8 +156,9 @@ class ExperimentExecutor:
 
     def experiment_load_variation_ratio(self):
         self.clear()
-        self.shape = 25.0
-        self.scale = 2.0
+        self.shape = 10.0
+        self.scale = self.num_of_shards / 32.0
+        self.parallel_requests = 5
 
         mean = self.shape * self.scale
 
@@ -173,7 +180,10 @@ class ExperimentExecutor:
 
     def experiment_shards_per_nodes_ratio(self):
         self.clear()
-        min_num_of_nodes = round(self.num_of_shards / 100)
+        self.parallel_requests = 5
+        self.shape = 10.0
+        self.scale = self.num_of_shards / 32.0
+        min_num_of_nodes = round(self.num_of_shards / 50)
         if min_num_of_nodes < 1:
             min_num_of_nodes = 1
         max_num_of_nodes = round(self.num_of_shards / 10)
@@ -228,12 +238,13 @@ class ExperimentExecutor:
         switcher = {
             CLOUD_LOAD_LEVEL: "Nodes: %d \nShards: %d \nLoad μ: %.2f \nLoad σ: %.2f " % (self.num_of_nodes,
                                                                                          self.num_of_shards,
+                                                                                         # I'm not sure that this is what we want
+                                                                                         # Maybe mean value of load in period?
                                                                                          self.shape * self.scale,
                                                                                          math.sqrt(self.shape) * self.scale),
             LOAD_VARIATION_RATIO: "Nodes: %d \nShards: %d \nNode μ: %.2f " % (self.num_of_nodes,
                                                                               self.num_of_shards,
-                                                                              self.parallel_requests)
-,
+                                                                              self.parallel_requests),
             SHARDS_PER_NODE_RATIO: "Shards: %d \nNode μ: %.2f\nLoad μ: %.2f \nLoad σ: %.2f " % (self.num_of_shards,
                                                                                                 self.parallel_requests,
                                                                                                 self.shape * self.scale,
