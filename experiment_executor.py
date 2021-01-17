@@ -15,7 +15,7 @@ from simulator.shard_allocator import shard_allocator
 from simulator.simulator import simulator
 
 CLOUD_LOAD_LEVEL = "cloud_load_lvl"
-LOAD_VARIATION_RATIO = "load_ratio"
+LOAD_VARIATION_RATIO = "load_variation_ratio"
 SHARDS_PER_NODE_RATIO = "shards_per_node_ratio"
 
 
@@ -57,7 +57,7 @@ class ExperimentExecutor:
         algorithm = str(input("Which allocation algorithm? (random/sequential/SALP):"))
 
         if algorithm == "all":
-            algorithm = ["random", "sequential", "SALP"]
+            algorithm = ["SALP", "random", "sequential"]
         else:
             algorithm = [algorithm]
         self.algorithms = algorithm
@@ -183,9 +183,7 @@ class ExperimentExecutor:
         self.parallel_requests = 5
         self.shape = 10.0
         self.scale = self.num_of_shards / 32.0
-        min_num_of_nodes = round(self.num_of_shards / 50)
-        if min_num_of_nodes < 1:
-            min_num_of_nodes = 1
+        min_num_of_nodes = 3
         max_num_of_nodes = round(self.num_of_shards / 10)
 
         for nodes in range(min_num_of_nodes, max_num_of_nodes + 1, 1):
@@ -266,6 +264,11 @@ class ExperimentExecutor:
             "plot_y_label": ["Percentage value of imbalance", "Percentage value of total delay", "Percentage value of total delay"],
             "plot_x_label": ["Cloud load level", "Load variation ratio", "Shards per node ratio"]
         }
+        experiments = {
+            CLOUD_LOAD_LEVEL: "Cloud load level",
+            LOAD_VARIATION_RATIO: "Load variation ratio",
+            SHARDS_PER_NODE_RATIO: "Shards per node ratio"
+        }
 
         for index in range(3):
             plt.clf()
@@ -275,7 +278,7 @@ class ExperimentExecutor:
                 plt.plot(x, y, label=group, linewidth=2)
             path = "experiments/" + experiment + plot_params["path_folder"][index] + experiment + "_" + getCurrentDateTime()
             plt.legend(loc="upper right")
-            plt.xlabel(plot_params["plot_x_label"][index])
+            plt.xlabel(experiments[experiment])
             plt.ylabel(plot_params["plot_y_label"][index])
             plt.gcf().text(0.82, 0.75, self.experiment_static_params, fontsize=10)
             plt.subplots_adjust(right=0.8)

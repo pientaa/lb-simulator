@@ -33,9 +33,6 @@ def shard_allocator(shards, nodes, algorithm_name):
 
 
 def random_allocation():
-    load_vectors_df = pd.read_csv("./generator/load_vectors.csv", header=None)
-    periods_in_vector = load_vectors_df.shape[1]
-
     shards_on_nodes = []
     current_node = 1
 
@@ -45,13 +42,13 @@ def random_allocation():
     for i in range(len(shards_shuffled)):
         shard = shards_shuffled[i]
 
-        shards_on_nodes.append([shard, current_node])
+        shards_on_nodes.append([current_node, shard])
 
         if (i + 1) % int(num_of_shards / num_of_nodes) == 0:
             if current_node != num_of_nodes:
                 current_node += 1
 
-    return pd.DataFrame(shards_on_nodes, columns=['shard', 'node'])
+    return pd.DataFrame(shards_on_nodes, columns=['node', 'shard'])
 
 
 def sequential_allocation():
@@ -60,13 +57,13 @@ def sequential_allocation():
 
     for shard in range(num_of_shards):
 
-        shards_on_nodes.append([shard + 1, current_node])
+        shards_on_nodes.append([current_node, shard + 1])
 
         if (shard + 1) % int(num_of_shards / num_of_nodes) == 0:
             if current_node != num_of_nodes:
                 current_node += 1
 
-    return pd.DataFrame(shards_on_nodes, columns=['shard', 'node'])
+    return pd.DataFrame(shards_on_nodes, columns=['node', 'shard'])
 
 
 def SALP_allocation():
