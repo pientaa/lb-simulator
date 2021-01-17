@@ -46,7 +46,7 @@ def estimate_delays(parallel_requests=5):
 
         for (period, requests) in requests_on_node.groupby('period'):
             E_ij_S = requests['load'].mean() ## Mean load of requests in time interval
-            ro_ij = ((requests['load'].sum() + WS_i)/ PERIOD) / (num_of_samples * parallel_requests) ## ro_ij is the value of ro_i but in "j" interval; not sure about WS_i..
+            ro_ij = ((requests['load'].sum() + WS_i)/ PERIOD) / (parallel_requests) ## ro_ij is the value of ro_i but in "j" interval; not sure about WS_i..
             
             ## Below line is calculating c_a_ij factor as a mean value of c_a_i factor for node
             ## c_a_ij factor is impossible to calculate manually, because we have information about only one interval
@@ -59,15 +59,15 @@ def estimate_delays(parallel_requests=5):
 
             ## Next two lines are calculating the same, but in first we are using mean value of request in interval
             # In the second line we are using mean value of all requests
-            # ro_l_ij = PERIOD / ((c_a_ij**2 + c_s_ij**2) * E_ij_S + PERIOD)
-            ro_l_ij = PERIOD / ((c_a_ij ** 2 + c_s_ij ** 2) * E_S + PERIOD)
+            ro_l_ij = PERIOD / ((c_a_ij**2 + c_s_ij**2) * E_ij_S + PERIOD)
+            # ro_l_ij = PERIOD / ((c_a_ij ** 2 + c_s_ij ** 2) * E_S + PERIOD)
             # print("RO_L_IJ: ", float(ro_l_ij))
             # print("RO_IJ: ", ro_ij)
             if(float(ro_ij) < float(ro_l_ij)):
                 ## Next two lines are calculating the same, but in first we are using mean value of request in interval
                 ## In the second line we are using mean value of all requests
-                # T = (ro_ij / (1 - ro_ij)) * ((c_a_ij**2 + c_s_ij**2) / 2) * E_ij_S
-                T = (ro_ij / (1 - ro_ij)) * ((c_a_ij**2 + c_s_ij**2) / 2) * E_S
+                T = (ro_ij / (1 - ro_ij)) * ((c_a_ij**2 + c_s_ij**2) / 2) * E_ij_S
+                # T = (ro_ij / (1 - ro_ij)) * ((c_a_ij**2 + c_s_ij**2) / 2) * E_S
             else:
                 T = 0.5 * PERIOD
 
@@ -75,7 +75,7 @@ def estimate_delays(parallel_requests=5):
                 WS_i = 0
             else:
                 # print("flaga")
-                WS_i = requests['load'].sum() - ro_l_ij  ## Don't understand that. Am I calculating job in next period correct? I used dr's equation...
+                WS_i = requests['load'].sum() - ro_l_ij * parallel_requests  ## Don't understand that. Am I calculating job in next period correct? I used dr's equation...
                                                         ## Maybe we need multiply ro_l_ij by PERIOD?
 
             T_sum = T_sum + T
