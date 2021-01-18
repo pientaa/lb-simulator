@@ -37,7 +37,6 @@ class ExperimentExecutor:
         self.delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
         self.imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_imbalance', 'imbalance_percentage'])
         self.estimated_delays = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
-        self.experiment_static_params = ""
 
     def print(self):
         print("Shards: " + str(self.num_of_shards))
@@ -150,7 +149,6 @@ class ExperimentExecutor:
             for algorithm in self.algorithms:
                 self.run_experiment(algorithm, CLOUD_LOAD_LEVEL, cloud_load_lvl)
 
-        self.generate_plot_text(CLOUD_LOAD_LEVEL)
         self.save_delays_and_imbalance(CLOUD_LOAD_LEVEL)
         self.generate_plots(CLOUD_LOAD_LEVEL)
 
@@ -174,14 +172,13 @@ class ExperimentExecutor:
             for algorithm in self.algorithms:
                 self.run_experiment(algorithm, LOAD_VARIATION_RATIO, load_ratio)
 
-        self.generate_plot_text(LOAD_VARIATION_RATIO)
         self.save_delays_and_imbalance(LOAD_VARIATION_RATIO)
         self.generate_plots(LOAD_VARIATION_RATIO)
 
     def experiment_shards_per_nodes_ratio(self):
         self.clear()
         self.parallel_requests = 5
-        self.shape = 10.0
+        self.shape = 5.0
         self.scale = self.num_of_shards / 32.0
         min_num_of_nodes = 3
         max_num_of_nodes = round(self.num_of_shards / 10)
@@ -193,7 +190,6 @@ class ExperimentExecutor:
             for algorithm in self.algorithms:
                 self.run_experiment(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio)
 
-        self.generate_plot_text(SHARDS_PER_NODE_RATIO)
         self.save_delays_and_imbalance(SHARDS_PER_NODE_RATIO)
         self.generate_plots(SHARDS_PER_NODE_RATIO)
 
@@ -232,26 +228,6 @@ class ExperimentExecutor:
 
         return self
 
-    def generate_plot_text(self, experiment):
-        switcher = {
-            CLOUD_LOAD_LEVEL: "Nodes: %d \nShards: %d \nLoad μ: %.2f \nLoad σ: %.2f " % (self.num_of_nodes,
-                                                                                         self.num_of_shards,
-                                                                                         # I'm not sure that this is what we want
-                                                                                         # Maybe mean value of load in period?
-                                                                                         self.shape * self.scale,
-                                                                                         math.sqrt(self.shape) * self.scale),
-            LOAD_VARIATION_RATIO: "Nodes: %d \nShards: %d \nNode μ: %.2f " % (self.num_of_nodes,
-                                                                              self.num_of_shards,
-                                                                              self.parallel_requests),
-            SHARDS_PER_NODE_RATIO: "Shards: %d \nNode μ: %.2f\nLoad μ: %.2f \nLoad σ: %.2f " % (self.num_of_shards,
-                                                                                                self.parallel_requests,
-                                                                                                self.shape * self.scale,
-                                                                                                math.sqrt(self.shape) * self.scale)
-        }
-
-        self.experiment_static_params = switcher.get(experiment)
-        return self
-
     def save_delays_and_imbalance(self, experiment):
         self.delays_df.to_csv('./experiments/' + experiment + '/delays_' + getCurrentDateTime() + '.csv', index=False)
         self.imbalance_df.to_csv('./experiments/' + experiment + '/imbalance_' + getCurrentDateTime() + '.csv', index=False)
@@ -280,7 +256,6 @@ class ExperimentExecutor:
             plt.legend(loc="upper right")
             plt.xlabel(experiments[experiment])
             plt.ylabel(plot_params["plot_y_label"][index])
-            plt.gcf().text(0.82, 0.75, self.experiment_static_params, fontsize=10)
             plt.subplots_adjust(right=0.8)
             plt.savefig(path + ".png")
 
