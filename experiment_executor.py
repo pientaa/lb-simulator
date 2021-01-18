@@ -15,7 +15,7 @@ from simulator.shard_allocator import shard_allocator
 from simulator.simulator import simulator
 
 CLOUD_LOAD_LEVEL = "cloud_load_lvl"
-LOAD_VARIATION_RATIO = "load_ratio"
+LOAD_VARIATION_RATIO = "load_variation_ratio"
 SHARDS_PER_NODE_RATIO = "shards_per_node_ratio"
 
 
@@ -37,7 +37,6 @@ class ExperimentExecutor:
         self.delays_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
         self.imbalance_df = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_imbalance', 'imbalance_percentage'])
         self.estimated_delays = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
-        self.experiment_static_params = ""
 
     def print(self):
         print("Shards: " + str(self.num_of_shards))
@@ -57,7 +56,7 @@ class ExperimentExecutor:
         algorithm = str(input("Which allocation algorithm? (random/sequential/SALP):"))
 
         if algorithm == "all":
-            algorithm = ["random", "sequential", "SALP"]
+            algorithm = ["SALP", "random", "sequential"]
         else:
             algorithm = [algorithm]
         self.algorithms = algorithm
@@ -65,8 +64,8 @@ class ExperimentExecutor:
         self.num_of_shards = int(input("Num of shards:"))
         self.num_of_samples = 100
         self.period = 5.0
-        self.shape = 2.0
-        self.scale = self.num_of_shards / 16.0
+        self.shape = 5.0
+        self.scale = self.num_of_shards / 32.0
         self.parallel_requests = 5
         self.num_of_nodes = round(self.num_of_shards / 10)
 
@@ -99,9 +98,11 @@ class ExperimentExecutor:
         NWTS = WTS / self.num_of_nodes
         NWTS_module = calculate_manhattan_vector_module(NWTS)
 
+        print(NWTS_module)
+
         sum_imbalance = 0
         for (node, group) in self.shard_on_nodes.groupby('node'):
-            vectors = [int]
+            vectors = []
             for shard in group["shard"].to_list():
                 vectors.append(self.load_vectors[shard - 1])
             node_load_vector = pd.DataFrame(vectors).sum(axis=0)
@@ -133,9 +134,13 @@ class ExperimentExecutor:
         processing_time = sum(load_vectors_df.sum(axis=1))
         periods_in_vector = load_vectors_df.shape[1]
 
-        min_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.9))
-        max_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.1))
+        min_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.1))
+        max_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.01))
         step = min_parallel_requests
+
+        print(periods_in_vector * self.num_of_nodes * 0.1)
+        print(periods_in_vector * self.num_of_nodes * 0.01)
+        print(processing_time)
 
         for parallel_requests in range(min_parallel_requests, max_parallel_requests + 1, step):
             self.parallel_requests = parallel_requests
@@ -144,14 +149,14 @@ class ExperimentExecutor:
             for algorithm in self.algorithms:
                 self.run_experiment(algorithm, CLOUD_LOAD_LEVEL, cloud_load_lvl)
 
-        self.generate_plot_text(CLOUD_LOAD_LEVEL)
         self.save_delays_and_imbalance(CLOUD_LOAD_LEVEL)
         self.generate_plots(CLOUD_LOAD_LEVEL)
 
     def experiment_load_variation_ratio(self):
         self.clear()
-        self.shape = 25.0
-        self.scale = 2.0
+        self.shape = 10.0
+        self.scale = self.num_of_shards / 32.0
+        self.parallel_requests = 5
 
         mean = self.shape * self.scale
 
@@ -167,15 +172,15 @@ class ExperimentExecutor:
             for algorithm in self.algorithms:
                 self.run_experiment(algorithm, LOAD_VARIATION_RATIO, load_ratio)
 
-        self.generate_plot_text(LOAD_VARIATION_RATIO)
         self.save_delays_and_imbalance(LOAD_VARIATION_RATIO)
         self.generate_plots(LOAD_VARIATION_RATIO)
 
     def experiment_shards_per_nodes_ratio(self):
         self.clear()
-        min_num_of_nodes = round(self.num_of_shards / 100)
-        if min_num_of_nodes < 1:
-            min_num_of_nodes = 1
+        self.parallel_requests = 5
+        self.shape = 5.0
+        self.scale = self.num_of_shards / 32.0
+        min_num_of_nodes = 3
         max_num_of_nodes = round(self.num_of_shards / 10)
 
         for nodes in range(min_num_of_nodes, max_num_of_nodes + 1, 1):
@@ -185,7 +190,6 @@ class ExperimentExecutor:
             for algorithm in self.algorithms:
                 self.run_experiment(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio)
 
-        self.generate_plot_text(SHARDS_PER_NODE_RATIO)
         self.save_delays_and_imbalance(SHARDS_PER_NODE_RATIO)
         self.generate_plots(SHARDS_PER_NODE_RATIO)
 
@@ -224,25 +228,6 @@ class ExperimentExecutor:
 
         return self
 
-    def generate_plot_text(self, experiment):
-        switcher = {
-            CLOUD_LOAD_LEVEL: "Nodes: %d \nShards: %d \nLoad μ: %.2f \nLoad σ: %.2f " % (self.num_of_nodes,
-                                                                                         self.num_of_shards,
-                                                                                         self.shape * self.scale,
-                                                                                         math.sqrt(self.shape) * self.scale),
-            LOAD_VARIATION_RATIO: "Nodes: %d \nShards: %d \nNode μ: %.2f " % (self.num_of_nodes,
-                                                                              self.num_of_shards,
-                                                                              self.parallel_requests)
-,
-            SHARDS_PER_NODE_RATIO: "Shards: %d \nNode μ: %.2f\nLoad μ: %.2f \nLoad σ: %.2f " % (self.num_of_shards,
-                                                                                                self.parallel_requests,
-                                                                                                self.shape * self.scale,
-                                                                                                math.sqrt(self.shape) * self.scale)
-        }
-
-        self.experiment_static_params = switcher.get(experiment)
-        return self
-
     def save_delays_and_imbalance(self, experiment):
         self.delays_df.to_csv('./experiments/' + experiment + '/delays_' + getCurrentDateTime() + '.csv', index=False)
         self.imbalance_df.to_csv('./experiments/' + experiment + '/imbalance_' + getCurrentDateTime() + '.csv', index=False)
@@ -255,6 +240,11 @@ class ExperimentExecutor:
             "plot_y_label": ["Percentage value of imbalance", "Percentage value of total delay", "Percentage value of total delay"],
             "plot_x_label": ["Cloud load level", "Load variation ratio", "Shards per node ratio"]
         }
+        experiments = {
+            CLOUD_LOAD_LEVEL: "Cloud load level",
+            LOAD_VARIATION_RATIO: "Load variation ratio",
+            SHARDS_PER_NODE_RATIO: "Shards per node ratio"
+        }
 
         for index in range(3):
             plt.clf()
@@ -264,9 +254,8 @@ class ExperimentExecutor:
                 plt.plot(x, y, label=group, linewidth=2)
             path = "experiments/" + experiment + plot_params["path_folder"][index] + experiment + "_" + getCurrentDateTime()
             plt.legend(loc="upper right")
-            plt.xlabel(plot_params["plot_x_label"][index])
+            plt.xlabel(experiments[experiment])
             plt.ylabel(plot_params["plot_y_label"][index])
-            plt.gcf().text(0.82, 0.75, self.experiment_static_params, fontsize=10)
             plt.subplots_adjust(right=0.8)
             plt.savefig(path + ".png")
 

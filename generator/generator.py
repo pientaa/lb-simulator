@@ -22,7 +22,7 @@ def generator(num_of_shards, num_of_samples, new_period, shape, scale):
     timestamps = [round(number, 3) for number in generate_time_stamps(tasks)]
 
     # We can parametrize this distribution in the future, too
-    loads = [round(number, 3) for number in np.random.gamma(2.0, 2.0, len(timestamps))]
+    loads = [round(number, 3) for number in np.random.gamma(0.5, 0.5, len(timestamps))]
 
     shards = np.random.randint(1, num_of_shards + 1, len(timestamps))
 
