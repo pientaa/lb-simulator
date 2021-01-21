@@ -64,7 +64,7 @@ class ExperimentExecutor:
         self.num_of_shards = int(input("Num of shards:"))
         self.num_of_samples = 100
         self.period = 5.0
-        self.shape = 7.0
+        self.shape = 9.0
         self.scale = 5.0
         self.parallel_requests = 5
         self.num_of_nodes = 10
@@ -131,17 +131,16 @@ class ExperimentExecutor:
     # TODO: max 0.5 ratio
     def experiment_cloud_load_level(self):
         self.clear()
-        self.shape = 7.0
+        self.shape = 9.0
         self.scale = 5.0
         self.num_of_nodes = 10
 
         processing_time = pd.read_csv("./experiments/requests.csv")['load'].sum()
 
         load_vectors_df = pd.DataFrame(self.load_vectors)
-        # processing_time = sum(load_vectors_df.sum(axis=1))
         periods_in_vector = load_vectors_df.shape[1]
 
-        min_parallel_requests = 1
+        min_parallel_requests = 2
         max_parallel_requests = 10
         step = min_parallel_requests
 
@@ -161,8 +160,8 @@ class ExperimentExecutor:
 
     def experiment_load_variation_ratio(self):
         self.clear()
-        self.shape = 12.5
-        self.scale = self.num_of_shards / 32.0
+        self.shape = 9.0
+        self.scale = 5.0
         self.parallel_requests = 5
 
         mean = self.shape * self.scale
@@ -213,27 +212,11 @@ class ExperimentExecutor:
     def calculate_delays(self, algorithm, experiment, experiment_value):
         self.num_of_samples = pd.DataFrame(self.load_vectors).shape[1]
 
-        complete_processing_time = self.num_of_samples * self.period
-
-        load_vectors_df = pd.DataFrame(self.load_vectors)
-        # processing_time = sum(load_vectors_df.sum(axis=1))
-
         processing_time = pd.read_csv("./experiments/requests.csv")['load'].sum()
 
         observed_requests = self.requests_completed
 
-        # TODO: Delete "cutting"
-        # for index, row in observed_requests[observed_requests['actual_end_time'] > complete_processing_time].iterrows():
-        #     observed_requests.at[index, 'actual_end_time'] = complete_processing_time
-        #     new_delay = complete_processing_time - observed_requests[observed_requests.index == index]['expected_end_time'].item()
-        #
-        #     if new_delay >= 0:
-        #         observed_requests.at[index, 'delay'] = new_delay
-        #     else:
-        #         observed_requests.at[index, 'delay'] = 0
-
         total_delay = observed_requests['delay'].sum()
-        # TODO: Czas sumowany wszystkich zadań
         percentage_delay = (total_delay / processing_time) * 100.0
 
         new_row = {'algorithm': algorithm, 'nodes': self.num_of_nodes, 'sum_of_delay': total_delay, 'delay_percentage': percentage_delay,
