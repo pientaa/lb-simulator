@@ -5,7 +5,7 @@ import numpy as np
 
 PERIOD = 5.0
 
-def estimate_delays(parallel_requests=5):
+def estimate_delays(algorithm, parallel_requests=5):
     print("Delays_estimator started with following params:")
     print("{ parallel_requests: " + str(parallel_requests) + "  } \n")
 
@@ -16,11 +16,10 @@ def estimate_delays(parallel_requests=5):
     all_requests = pd.read_csv("./generator/requests.csv")
     all_requests = all_requests.rename(columns={"Unnamed: 0": "id"}, inplace=False)
 
-    E_S = all_requests['load'].mean() ## Mean value of load in all requests
+    E_S = all_requests['load'].mean()
+    total_delay = 0.0
 
-    total_delay = 0.0 # Delay for entire cloud
-    c_a_estimated = 0.0
-    c_a_calculated = 0.0
+    c_df = pd.DataFrame(columns=['node', 'period','c_a_estimated', 'c_a_calculated', 'c_s_estimated', 'c_s_calculated'])
 
     for (node, shards) in shards_on_nodes.groupby('node'):
         shards_list = shards['shard'].to_list()
@@ -38,32 +37,35 @@ def estimate_delays(parallel_requests=5):
         WS_ij = 0 
         T_sum = 0 
 
-        num_of_requests_per_period = [0] * num_of_samples
+        load_per_period = [0] * num_of_samples
         for (period, requests) in requests_on_node.groupby('period'):
-            num_of_requests_per_period[period - 1] = requests['period'].count()
+            load_per_period[period - 1] = requests['load'].sum() / PERIOD
 
-        c_a_i = requests_on_node['timestamp'].diff().std() / requests_on_node['timestamp'].diff().mean()
-        # c_a_i = pd.DataFrame(num_of_requests_per_period).std() / pd.DataFrame(num_of_requests_per_period).mean()
+        c_a_i = float(pd.DataFrame(load_per_period).std() / pd.DataFrame(load_per_period).mean())
+        c_s_i = 0.5
         for (period, requests) in requests_on_node.groupby('period'):
             E_ij_S = requests['load'].mean()
-            if(E_ij_S == 0.0):
-                continue
             timestamps_list = requests['timestamp'].tolist()
             appear_differences = requests['timestamp'].diff().tolist()
             appear_differences[0] = timestamps_list[0] - PERIOD * (period-1)
             appear_differences.append(PERIOD*(period) - timestamps_list[len(timestamps_list) - 1] )
-            c_a_ij = pd.DataFrame(appear_differences)[0].std() / pd.DataFrame(appear_differences)[0].mean()
-            c_s_ij = requests['load'].std() / requests['load'].mean()
+            
             ro_ij = (requests['load'].sum() + WS_ij) / (parallel_requests) 
 
-            if(isnan(c_s_ij)):
-                c_s_ij = 0.0
+            c_a_ij = (ro_ij / ro_i) * c_a_i
+            c_s_ij = (ro_ij / ro_i) * c_s_i
+
+            c_a_ij_calculated = pd.DataFrame(appear_differences)[0].std() / pd.DataFrame(appear_differences)[0].mean()
+            c_s_ij_calculated = requests['load'].std() / requests['load'].mean()
+
+            if(isnan(c_s_ij_calculated)):
+                c_s_ij_calculated = 0.0
+
+            to_append = {'node' : node, 'period' : period, 'c_a_estimated' : c_a_ij, 'c_a_calculated' : c_a_ij_calculated , 'c_s_estimated' : c_s_ij, 'c_s_calculated' : c_s_ij_calculated }
+
+            c_df = c_df.append(to_append, ignore_index=True)
 
             ro_l_ij = PERIOD / ((c_a_ij**2 + c_s_ij**2) * E_ij_S + PERIOD)
-
-
-            c_a_estimated += ((ro_ij / ro_i) * c_a_i)
-            c_a_calculated += c_a_ij
 
             if(float(ro_ij) < float(ro_l_ij)):
                 T = (ro_ij / (1 - ro_ij)) * ((c_a_ij**2 + c_s_ij**2) / 2) * E_ij_S
@@ -74,20 +76,23 @@ def estimate_delays(parallel_requests=5):
                 WS_ij = 0
             else:
                 WS_ij = requests['load'].sum() - ro_l_ij * parallel_requests 
-
+                
             T_sum = T_sum + T
         
         total_delay = total_delay + float(T_sum)
 
-
-    # print(pd.DataFrame(c_a_calculated))
-    # print(pd.DataFrame(c_a_estimated))
     total_delay = total_delay / (num_of_samples * node)
-    c_a_calculated = c_a_calculated / (num_of_samples * node)
-    c_a_estimated = c_a_estimated / (num_of_samples * node)
-    print("c_a_calc: ", c_a_calculated)
-    print("c_a_esti: ", c_a_estimated)
+
+    c_final_df = pd.DataFrame(columns=['period','c_a_estimated', 'c_a_calculated', 'c_s_estimated', 'c_s_calculated'])
+
+    for (period, data) in c_df.groupby('period'):
+        to_append = {'period' : period, 'c_a_estimated' : data['c_a_estimated'].mean(),
+                     'c_a_calculated' : data['c_a_calculated'].mean() , 'c_s_estimated' : data['c_s_estimated'].mean(),
+                     'c_s_calculated' : data['c_s_calculated'].mean() }
+        c_final_df = c_final_df.append(to_append, ignore_index=True)
+
+    c_final_df.to_csv("./experiments/" + algorithm + "/c_factors.csv")
     return total_delay, (total_delay / E_S) 
 
 if __name__ == "__main__":
-    estimate_delays(5)
+    estimate_delays("SALP", 5)
