@@ -128,7 +128,6 @@ class ExperimentExecutor:
             if experiment == '3':
                 self.experiment_shards_per_nodes_ratio()
 
-    # TODO: max 0.5 ratio
     def experiment_cloud_load_level(self):
         self.clear()
         self.shape = 9.0
@@ -192,7 +191,7 @@ class ExperimentExecutor:
 
         for nodes in range(min_num_of_nodes, max_num_of_nodes + 1, 1):
             self.num_of_nodes = nodes
-            shards_per_node_ratio = 1 / nodes
+            shards_per_node_ratio = self.num_of_shards / nodes
 
             for algorithm in self.algorithms:
                 self.run_experiment(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio)
@@ -236,12 +235,12 @@ class ExperimentExecutor:
             "df_column": ["imbalance_percentage", "delay_percentage", "delay_percentage"],
             "path_folder": ["/imbalance_", "/delays_", "/estimated_delays_"],
             "plot_y_label": ["Percentage value of imbalance", "Percentage value of total delay", "Percentage value of total delay"],
-            "plot_x_label": ["Cloud load level", "Load variation ratio", "Shards per node ratio"]
+            "plot_x_label": ["Cloud load level", "Load variation ratio", "Shards per node"]
         }
         experiments = {
             CLOUD_LOAD_LEVEL: "Cloud load level",
             LOAD_VARIATION_RATIO: "Load variation ratio",
-            SHARDS_PER_NODE_RATIO: "Shards per node ratio"
+            SHARDS_PER_NODE_RATIO: "Shards per node"
         }
 
         for index in range(3):
