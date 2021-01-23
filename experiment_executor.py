@@ -185,8 +185,8 @@ class ExperimentExecutor:
         self.parallel_requests = 5
         self.shape = 5.0
         self.scale = self.num_of_shards / 32.0
-        min_num_of_nodes = 3
-        max_num_of_nodes = round(self.num_of_shards / 10)
+        min_num_of_nodes = 6
+        max_num_of_nodes = 20
 
         for nodes in range(min_num_of_nodes, max_num_of_nodes + 1, 1):
             self.num_of_nodes = nodes
