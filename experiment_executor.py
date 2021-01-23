@@ -67,7 +67,7 @@ class ExperimentExecutor:
         self.shape = 9.0
         self.scale = 5.0
         self.parallel_requests = 5
-        self.num_of_nodes = 10
+        self.num_of_nodes = 6
 
         return self
 
@@ -132,16 +132,16 @@ class ExperimentExecutor:
         self.clear()
         self.shape = 9.0
         self.scale = 5.0
-        self.num_of_nodes = 10
+        self.num_of_nodes = 6
 
         processing_time = pd.read_csv("./experiments/requests.csv")['load'].sum()
 
         load_vectors_df = pd.DataFrame(self.load_vectors)
         periods_in_vector = load_vectors_df.shape[1]
 
-        min_parallel_requests = 2
+        min_parallel_requests = 3
         max_parallel_requests = 10
-        step = min_parallel_requests
+        step = 1
 
         print(periods_in_vector * self.num_of_nodes * 0.1)
         print(periods_in_vector * self.num_of_nodes * 0.01)
@@ -180,7 +180,6 @@ class ExperimentExecutor:
         self.save_delays_and_imbalance(LOAD_VARIATION_RATIO)
         self.generate_plots(LOAD_VARIATION_RATIO)
 
-    # TODO: on axis X put shards on nodes
     def experiment_shards_per_nodes_ratio(self):
         self.clear()
         self.parallel_requests = 5
