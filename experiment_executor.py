@@ -64,10 +64,10 @@ class ExperimentExecutor:
         self.num_of_shards = int(input("Num of shards:"))
         self.num_of_samples = 100
         self.period = 5.0
-        self.shape = 5.0
-        self.scale = self.num_of_shards / 32.0
+        self.shape = 9.0
+        self.scale = 5.0
         self.parallel_requests = 5
-        self.num_of_nodes = round(self.num_of_shards / 10)
+        self.num_of_nodes = 6
 
         return self
 
@@ -130,13 +130,18 @@ class ExperimentExecutor:
 
     def experiment_cloud_load_level(self):
         self.clear()
+        self.shape = 9.0
+        self.scale = 5.0
+        self.num_of_nodes = 6
+
+        processing_time = pd.read_csv("./experiments/requests.csv")['load'].sum()
+
         load_vectors_df = pd.DataFrame(self.load_vectors)
-        processing_time = sum(load_vectors_df.sum(axis=1))
         periods_in_vector = load_vectors_df.shape[1]
 
-        min_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.1))
-        max_parallel_requests = round(processing_time / (periods_in_vector * self.num_of_nodes * 0.01))
-        step = min_parallel_requests
+        min_parallel_requests = 3
+        max_parallel_requests = 10
+        step = 1
 
         print(periods_in_vector * self.num_of_nodes * 0.1)
         print(periods_in_vector * self.num_of_nodes * 0.01)
@@ -154,8 +159,8 @@ class ExperimentExecutor:
 
     def experiment_load_variation_ratio(self):
         self.clear()
-        self.shape = 10.0
-        self.scale = self.num_of_shards / 32.0
+        self.shape = 9.0
+        self.scale = 5.0
         self.parallel_requests = 5
 
         mean = self.shape * self.scale
@@ -180,12 +185,12 @@ class ExperimentExecutor:
         self.parallel_requests = 5
         self.shape = 5.0
         self.scale = self.num_of_shards / 32.0
-        min_num_of_nodes = 3
-        max_num_of_nodes = round(self.num_of_shards / 10)
+        min_num_of_nodes = 6
+        max_num_of_nodes = 20
 
         for nodes in range(min_num_of_nodes, max_num_of_nodes + 1, 1):
             self.num_of_nodes = nodes
-            shards_per_node_ratio = 1 / nodes
+            shards_per_node_ratio = self.num_of_shards / nodes
 
             for algorithm in self.algorithms:
                 self.run_experiment(algorithm, SHARDS_PER_NODE_RATIO, shards_per_node_ratio)
@@ -205,21 +210,12 @@ class ExperimentExecutor:
     def calculate_delays(self, algorithm, experiment, experiment_value):
         self.num_of_samples = pd.DataFrame(self.load_vectors).shape[1]
 
-        complete_processing_time = self.num_of_samples * self.period
+        processing_time = pd.read_csv("./experiments/requests.csv")['load'].sum()
 
-        observed_requests = self.requests_completed[self.requests_completed['timestamp'] < complete_processing_time]
-
-        for index, row in observed_requests[observed_requests['actual_end_time'] > complete_processing_time].iterrows():
-            observed_requests.at[index, 'actual_end_time'] = complete_processing_time
-            new_delay = complete_processing_time - observed_requests[observed_requests.index == index]['expected_end_time'].item()
-
-            if new_delay >= 0:
-                observed_requests.at[index, 'delay'] = new_delay
-            else:
-                observed_requests.at[index, 'delay'] = 0
+        observed_requests = self.requests_completed
 
         total_delay = observed_requests['delay'].sum()
-        percentage_delay = (total_delay / complete_processing_time) * 100.0
+        percentage_delay = (total_delay / processing_time) * 100.0
 
         new_row = {'algorithm': algorithm, 'nodes': self.num_of_nodes, 'sum_of_delay': total_delay, 'delay_percentage': percentage_delay,
                    experiment: experiment_value}
@@ -238,12 +234,12 @@ class ExperimentExecutor:
             "df_column": ["imbalance_percentage", "delay_percentage", "delay_percentage"],
             "path_folder": ["/imbalance_", "/delays_", "/estimated_delays_"],
             "plot_y_label": ["Percentage value of imbalance", "Percentage value of total delay", "Percentage value of total delay"],
-            "plot_x_label": ["Cloud load level", "Load variation ratio", "Shards per node ratio"]
+            "plot_x_label": ["Cloud load level", "Load variation ratio", "Shards per node"]
         }
         experiments = {
             CLOUD_LOAD_LEVEL: "Cloud load level",
             LOAD_VARIATION_RATIO: "Load variation ratio",
-            SHARDS_PER_NODE_RATIO: "Shards per node ratio"
+            SHARDS_PER_NODE_RATIO: "Shards per node"
         }
 
         for index in range(3):
