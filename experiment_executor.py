@@ -262,7 +262,7 @@ class ExperimentExecutor:
         self.estimated_delays = pd.DataFrame(columns=['algorithm', 'nodes', 'sum_of_delay', 'delay_percentage'])
 
     def estimate_delays(self, algorithm, experiment, experiment_value):
-        total_delay, percentage_delay = estimate_delays(self.parallel_requests)
+        total_delay, percentage_delay = estimate_delays(algorithm, self.parallel_requests)
 
         new_row = {'algorithm': algorithm, 'nodes': self.num_of_nodes, 'sum_of_delay': total_delay, 'delay_percentage': percentage_delay,
                    experiment: experiment_value}
