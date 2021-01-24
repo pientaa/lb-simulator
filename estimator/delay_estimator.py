@@ -53,8 +53,8 @@ def estimate_delays(algorithm, parallel_requests=5):
 
             ro_ij = (requests['load'].sum() + WS_ij) / parallel_requests
 
-            c_a_ij = (ro_ij / ro_i) * c_a_i
-            c_s_ij = (ro_ij / ro_i) * c_s_i
+            c_a_ij = c_a_i
+            c_s_ij = c_s_i
 
             c_a_ij_calculated = pd.DataFrame(appear_differences)[0].std() / pd.DataFrame(appear_differences)[0].mean()
             c_s_ij_calculated = requests['load'].std() / requests['load'].mean()
