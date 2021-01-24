@@ -112,9 +112,13 @@ def SALP_allocation():
 
         nodes_detail_df = nodes_detail_df.append(to_append, ignore_index=True)
 
-        if calculate_manhattan_vector_module(
-                nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item()) > NWTS_module:
+        WSi_module = calculate_manhattan_vector_module(
+            nodes_detail_df[nodes_detail_df.node == node]['load_vector'].item())
+        if WSi_module > NWTS_module:
             list_inactive_nodes.append(node)
+            # print("WSi: ", str(WSi_module), " NWTS: ", str(NWTS_module))
+
+        # print("Inactive nodes: \n", list_inactive_nodes)
 
     shards_allocated = []
     for index, row in nodes_detail_df.iterrows():
@@ -122,7 +126,27 @@ def SALP_allocation():
         for shard in row['shards']:
             shards_allocated.append([node, shard])
 
+    shards_all = pd.DataFrame(shards_allocated, columns=['node', 'shard'])
+
+    print("Number of shards: ", str(shards_all.groupby("node").count().sum().item()))
+
+    shard_load_df = load_vectors_df.sum(axis=1)
+    shard_load = pd.DataFrame(shard_load_df, columns=['load'])
+    shard_load['shard'] = range(1, num_of_shards + 1)
+
+    print("Total cloud load: ", round(shard_load_df.sum(), 2))
+
+    total_allocated_load = 0
+    for (node, shards) in shards_all.groupby('node'):
+        shards_list = shards['shard'].tolist()
+        load_per_node = shard_load.loc[shard_load["shard"].isin(shards_list)]
+        node_load = load_per_node['load'].sum()
+        print("Node: ", str(node), " load: ", str(round(node_load, 2)))
+        total_allocated_load += node_load
+
+    print("Sum total allocated load: ", str(round(total_allocated_load, 2)))
     return pd.DataFrame(shards_allocated, columns=['node', 'shard'])
+
 
 
 def calculate_manhattan_vector_module(row):
