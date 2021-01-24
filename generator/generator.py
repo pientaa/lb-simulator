@@ -88,8 +88,6 @@ def generate_load_vectors(requests, num_of_shards):
     while len(load_vectors) < num_of_shards:
         load_vectors.append([0] * max_vector_size)
 
-    random.shuffle(load_vectors)
-
     return load_vectors
 
 
