@@ -76,11 +76,11 @@ def simulator(parallel_requests, new_period):
 
     shards_on_nodes = pd.read_csv("./simulator/shard_allocated.csv")
 
-    requests_processing = ProcessingQueue()
-    requests_awaiting = RequestQueue()
     requests_completed = RequestQueue()
 
     for (node, shards) in shards_on_nodes.groupby('node'):
+        requests_processing = ProcessingQueue()
+        requests_awaiting = RequestQueue()
 
         requests_per_node = requests[requests["shard"].isin(shards["shard"].to_list())]
 

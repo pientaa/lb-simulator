@@ -183,7 +183,7 @@ class ExperimentExecutor:
     def experiment_shards_per_nodes_ratio(self):
         self.clear()
         self.parallel_requests = 5
-        self.shape = 4.0
+        self.shape = 12.0
         self.scale = 12.5
         min_num_of_nodes = 6
         max_num_of_nodes = 20
