@@ -48,7 +48,7 @@ class ExperimentExecutor:
     def manual_config(self):
         experiment = str(input("Which experiment?:"))
         if experiment == "all":
-            experiment = ["1", "2", "3"]
+            experiment = ["1", "2"]
         else:
             experiment = [experiment]
         self.experiments = experiment
