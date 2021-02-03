@@ -48,7 +48,7 @@ class ExperimentExecutor:
     def manual_config(self):
         experiment = str(input("Which experiment?:"))
         if experiment == "all":
-            experiment = ["1", "2", "3"]
+            experiment = ["1", "2"]
         else:
             experiment = [experiment]
         self.experiments = experiment
@@ -64,8 +64,8 @@ class ExperimentExecutor:
         self.num_of_shards = int(input("Num of shards:"))
         self.num_of_samples = 100
         self.period = 5.0
-        self.shape = 9.0
-        self.scale = 5.0
+        self.shape = 4.0
+        self.scale = 12.5
         self.parallel_requests = 5
         self.num_of_nodes = 6
 
@@ -130,8 +130,8 @@ class ExperimentExecutor:
 
     def experiment_cloud_load_level(self):
         self.clear()
-        self.shape = 9.0
-        self.scale = 5.0
+        self.shape = 36.0
+        self.scale = 4.0
         self.num_of_nodes = 6
 
         processing_time = pd.read_csv("./experiments/requests.csv")['load'].sum()
@@ -183,8 +183,8 @@ class ExperimentExecutor:
     def experiment_shards_per_nodes_ratio(self):
         self.clear()
         self.parallel_requests = 5
-        self.shape = 5.0
-        self.scale = self.num_of_shards / 32.0
+        self.shape = 12.0
+        self.scale = 12.5
         min_num_of_nodes = 6
         max_num_of_nodes = 20
 
